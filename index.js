@@ -15,8 +15,8 @@ var pick = require('object.pick');
 var omit = require('object.omit');
 var merge = require('mixin-deep');
 var parsePath = require('parse-filepath');
+var toMapping = require('files-objects');
 var reserved = require('./lib/reserved');
-var toMapping = require('./obj');
 var utils = require('./lib/utils');
 
 /**
@@ -31,9 +31,9 @@ function Files(config, dest, options) {
   if (arguments.length > 1 || typeof config !== 'object') {
     config = this.toConfig.apply(this, arguments);
   }
+  this.cache = {};
   config = config || {};
   config.options = config.options || {};
-  this.cache = {};
   return this.expand(config);
 }
 
@@ -44,20 +44,13 @@ function Files(config, dest, options) {
 Files.prototype = {
   constructor: Files,
 
-  toConfig: function (src, dest, options) {
-    if (typeof src !== 'string' && !Array.isArray(src)) {
-      return src;
-    }
-    var config = {};
-    config.src = src || '';
-    if (typeof dest !== 'string') {
-      options = dest;
-      dest = '';
-    }
-    config.options = options || {};
-    config.dest = dest || '';
-    return config;
-  },
+  /**
+   * Normalize the configuration passed to
+   * the constructor.
+   *
+   * @param {Object} `config`
+   * @return {Object}
+   */
 
   normalize: function (config) {
     var orig = clone(config);
@@ -75,26 +68,66 @@ Files.prototype = {
         files = files.concat(obj);
       }
     }
-    if (files.length) return files;
-    return orig;
+    if (!files.length) return orig;
+    return files;
   },
 
   /**
-   * Expand glob patterns in `src`
+   * Normalize arguments when passed as a list on
+   * the constructor.
+   *
+   * ```js
+   * files(src, dest, options);
+   * ```
+   * @param {String|Array} `src`
+   * @param {String} `dest`
+   * @param {Object} `options`
+   * @return {object}
+   */
+
+  toConfig: function (src, dest, options) {
+    if (typeof src !== 'string' && !Array.isArray(src)) {
+      return src;
+    }
+    var config = {};
+    config.src = src || '';
+    if (typeof dest !== 'string') {
+      options = dest;
+      dest = '';
+    }
+    config.options = options || {};
+    config.dest = dest || '';
+    return config;
+  },
+
+  /**
+   * Expand glob patterns in `src`.
    *
    * @param {Object} `config`
    * @return {Object}
    */
 
   expand: function(config) {
-    var opts = pick(config, reserved.optsKeys);
-    var rest = omit(config, reserved.optsKeys);
+    var opts = pick(config, reserved.options);
+    var rest = omit(config, reserved.options);
     config.options = merge({}, opts, rest.options);
 
     if (!config.src) return this.normalize(config);
-    var orig = config.src;
 
-    config.src = glob.sync(orig, config.options);
+    // grunt compatibility
+    if (config.destBase && !config.dest) {
+      config.dest = config.destBase;
+      delete config.destBase;
+    }
+    if (config.srcBase && !config.cwd) {
+      config.cwd = config.srcBase;
+      delete config.srcBase;
+    }
+
+    // store the original `src`
+    var orig = config.src;
+    // attempt to expand glob patterns
+    config.src = glob.sync(config.src, clone(config.options));
 
     if (!config.src.length) {
       if (config.options.nonull === true) {
@@ -114,6 +147,9 @@ Files.prototype = {
 
   /**
    * Expand `src-dest` mappings.
+   *
+   * @param {Object} `config`
+   * @return {Object}
    */
 
   expandMapping: function (config) {
@@ -121,7 +157,7 @@ Files.prototype = {
     var files = [];
 
     while (++i < len) {
-      var result = this.mapDest(config.dest, config.src[i], config);
+      var result = this.mapDest(config.src[i], config.dest, config);
       if (result === false) continue;
       var dest = utils.unixify(result.dest);
       var src = utils.unixify(result.src);
@@ -141,10 +177,15 @@ Files.prototype = {
   },
 
   /**
-   * Map destination paths
+   * Calculate destination paths based on configuration.
+   *
+   * @param {String|Array} `src`
+   * @param {String} `dest`
+   * @param {Object} `config`
+   * @return {Object}
    */
 
-  mapDest: function (dest, src, config) {
+  mapDest: function (src, dest, config) {
     var opts = config.options;
     var fp = src;
 
@@ -171,6 +212,10 @@ Files.prototype = {
 
   /**
    * Default filter function.
+   *
+   * @param {String} `fp`
+   * @param {Object} `opts`
+   * @return {Boolean} Returns `true` if a file matches.
    */
 
   filter: function(fp, opts) {
@@ -208,7 +253,8 @@ Files.prototype = {
   rename: function(dest, src, config) {
     var opts = config.options;
     if (typeof opts.rename === 'function') {
-      return opts.rename.call(parsePath(src), dest, src, config.options);
+      var ctx = parsePath(src);
+      return opts.rename.call(ctx, dest, src, opts);
     }
     return dest ? path.join(dest, src) : src;
   }
