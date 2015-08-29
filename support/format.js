@@ -1,4 +1,3 @@
-var util = require('util');
 var forIn = require('for-in');
 var inspect = require('stringify-object');
 var configs = require('./configs');
@@ -84,5 +83,7 @@ function formatEach(configs) {
   return res.join('\nand...\n');
 }
 var res = format(configs);
+// console.log(res);
 
-console.log(res)
+module.exports = format;
+
