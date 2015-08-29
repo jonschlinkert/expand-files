@@ -7,6 +7,8 @@
 Expands `src` glob patterns and creates `dest` mappings:
 
 ```js
+var files = require('expand-files');
+
 files({
   options: {
     cwd: 'test/fixtures',
