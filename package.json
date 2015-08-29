@@ -1,0 +1,37 @@
+{
+  "name": "expand-files",
+  "description": "Expand file patterns in a declarative configuration.",
+  "version": "0.0.1",
+  "homepage": "https://github.com/jonschlinkert/expand-files",
+  "author": "Jon Schlinkert (https://github.com/jonschlinkert)",
+  "repository": "jonschlinkert/expand-files",
+  "bugs": {
+    "url": "https://github.com/jonschlinkert/expand-files/issues"
+  },
+  "license": "MIT",
+  "files": [
+    "index.js"
+  ],
+  "main": "index.js",
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "dependencies": {
+    "clone-deep": "^0.2.2",
+    "for-in": "^0.1.4",
+    "globby": "^2.1.0",
+    "mixin-deep": "^1.1.2",
+    "object.omit": "^2.0.0",
+    "object.pick": "^1.1.1",
+    "parse-filepath": "^0.6.3"
+  },
+  "devDependencies": {
+    "expand": "^0.1.2",
+    "mocha": "*",
+    "should": "*"
+  },
+  "keywords": []
+}
