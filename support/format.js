@@ -4,7 +4,6 @@ var inspect = require('stringify-object');
 var configs = require('./configs');
 var files = require('../');
 
-var print = '';
 
 function stringify(config) {
   return inspect(config, {
@@ -13,65 +12,8 @@ function stringify(config) {
   });
 }
 
-// var configs = [
-//   {
-//     foo: 'bar'
-//   },
-//   {
-//     src: 'lib/*.js',
-//     dest: 'dist/'
-//   },
-//   {
-//     src: 'lib/*.js',
-//     dest: 'dist/',
-//     options: {
-//       expand: true
-//     }
-//   },
-//   {
-//     src: '*.js',
-//     dest: 'dist/',
-//     cwd: 'lib'
-//   },
-//   {
-//     src: '*.js',
-//     dest: 'dist/',
-//     cwd: 'lib',
-//     expand: true
-//   },
-//   {
-//     src: '*.js',
-//     dest: 'dist/',
-//     cwd: 'lib',
-//     expand: true,
-//     flatten: true
-//   },
-//   {
-//     src: 'lib/*.js',
-//     dest: 'dist/',
-//     flatten: true
-//   },
-//   {
-//     src: 'lib/*.js',
-//     dest: 'dist/',
-//     options: {
-//       expand: true,
-//       flatten: true
-//     }
-//   },
-//   {
-//     'foo/': 'test/fixtures/*.txt',
-//     'bar/': 'test/fixtures/*.txt'
-//   },
-//   {
-//     options: {expand: true},
-//     'foo/': 'test/fixtures/*.txt',
-//     'bar/': 'test/fixtures/*.txt'
-//   }
-// ]
-
 function format(arr) {
-  var res = '';
+  var res = '# Patterns\n\n';
   arr.forEach(function (config) {
     forIn(config, function (val, key) {
       if (key === 'section') {
@@ -79,7 +21,6 @@ function format(arr) {
       } else if (key === 'examples') {
         res += examples(val);
       }
-
       res += '\n';
     });
   });
@@ -87,7 +28,7 @@ function format(arr) {
 }
 
 function section(str) {
-  return '### ' + str;
+  return '## ' + str;
 }
 
 function description(str) {

@@ -5,7 +5,24 @@ var merge = require('mixin-deep');
 var expand = require('expand');
 
 module.exports = [{
-  section: 'expand patterns',
+  section: 'files-object mappings',
+  examples: [{
+      description: 'expands "files-objects" into src-dest mappings',
+      config: [{
+        'foo/': 'test/fixtures/*.txt',
+        'bar/': 'test/fixtures/*.txt'
+      }, {
+        options: {
+          expand: true
+        },
+        'foo/': 'test/fixtures/*.txt',
+        'bar/': 'test/fixtures/*.txt'
+      }]
+    }
+
+  ]
+}, {
+  section: '`src` normalization',
   examples: [{
     description: 'attempts to create node when no `src` exists',
     config: {
@@ -21,6 +38,19 @@ module.exports = [{
     description: 'expands `src` glob patterns:',
     config: {
       src: 'test/fixtures/*.txt'
+    },
+  }, {
+    description: 'expands `src` glob patterns with `dest`:',
+    config: {
+      src: 'test/fixtures/*.txt',
+      dest: 'dist/'
+    },
+  }, {
+    description: 'expands `src` glob patterns with `dest` and `cwd`:',
+    config: {
+      options: {cwd: 'test/fixtures', expand: true},
+      src: '*.txt',
+      dest: 'dist/'
     },
   }, {
     description: 'uses a `cwd` to expand `src` glob patterns:',
@@ -154,13 +184,13 @@ module.exports = [{
       options: {
         expand: true
       },
-      src: ['test/fixtures/**/*.txt'],
+      src: ['test/fixtures/a/**/*.txt'],
       dest: 'dest'
     }, {
       options: {
         expand: true
       },
-      src: ['test/fixtures/**/*.txt'],
+      src: ['test/fixtures/a/**/*.txt'],
       dest: 'dest/'
     }]
   }, {
@@ -170,7 +200,7 @@ module.exports = [{
         expand: true,
         flatten: true
       },
-      src: ['a/**/*.txt'],
+      src: ['test/fixtures/a/**/*.txt'],
       dest: 'dest'
     }
   }]
@@ -183,7 +213,7 @@ module.exports = [{
         expand: true,
         ext: '.foo'
       },
-      src: ['**/foo.*/**'],
+      src: ['test/fixtures/**/foo.*/**'],
       dest: 'dest'
     }
   }, {
@@ -193,7 +223,7 @@ module.exports = [{
         expand: true,
         ext: ''
       },
-      src: ['a/**/*.txt'],
+      src: ['test/fixtures/a/**/*.txt'],
       dest: 'dest'
     }
   }]
@@ -207,7 +237,7 @@ module.exports = [{
         ext: '.foo',
         extDot: 'first'
       },
-      src: ['foo.*/**'],
+      src: ['test/fixtures/foo.*/**'],
       dest: 'dest'
     }
   }, {
@@ -218,7 +248,7 @@ module.exports = [{
         ext: '.foo',
         extDot: 'last'
       },
-      src: ['foo.*/**'],
+      src: ['test/fixtures/foo.*/**'],
       dest: 'dest'
     }
   }]
@@ -231,7 +261,7 @@ module.exports = [{
         expand: true,
         cwd: 'a'
       },
-      src: ['**/*.txt'],
+      src: ['test/fixtures/**/*.txt'],
       dest: 'dest'
     }
   }]
@@ -248,14 +278,13 @@ module.exports = [{
           return path.join(dest, options.cwd, 'foo', fp);
         }
       },
-      src: ['**/*.txt'],
+      src: ['test/fixtures/**/*.txt'],
       dest: 'dest'
     }
   }, {
     description: 'exposes target properties as `this` to the rename function:',
     config: {
       options: {
-        cwd: 'test/fixtures',
         expand: true,
         filter: 'isFile',
         permalink: ':dest/:upper(basename)',
@@ -273,7 +302,7 @@ module.exports = [{
           });
         }
       },
-      src: ['**/*'],
+      src: ['test/fixtures/**/*'],
       dest: 'foo/bar'
     }
   }, {
@@ -287,7 +316,7 @@ module.exports = [{
           return path.join(dest, 'all' + path.extname(fp));
         }
       },
-      src: ['{a,b}/**/*'],
+      src: ['test/fixtures/{a,b}/**/*'],
       dest: 'dest'
     }
   }, {
@@ -301,7 +330,7 @@ module.exports = [{
           return path.join(dest, 'all' + path.extname(fp));
         }
       },
-      src: ['{a,b}/**/*'],
+      src: ['test/fixtures/{a,b}/**/*'],
       dest: 'dest'
     }
   }, {
@@ -315,8 +344,56 @@ module.exports = [{
           return path.join(dest, 'all' + path.extname(fp));
         }
       },
-      src: ['{a,b}/**/*'],
+      src: ['test/fixtures/{a,b}/**/*'],
       dest: 'dest'
     }
   }]
 }];
+
+// var configs = [
+//   {
+//     foo: 'bar'
+//   },
+//   {
+//     src: 'lib/*.js',
+//     dest: 'dist/'
+//   },
+//   {
+//     src: 'lib/*.js',
+//     dest: 'dist/',
+//     options: {
+//       expand: true
+//     }
+//   },
+//   {
+//     src: '*.js',
+//     dest: 'dist/',
+//     cwd: 'lib'
+//   },
+//   {
+//     src: '*.js',
+//     dest: 'dist/',
+//     cwd: 'lib',
+//     expand: true
+//   },
+//   {
+//     src: '*.js',
+//     dest: 'dist/',
+//     cwd: 'lib',
+//     expand: true,
+//     flatten: true
+//   },
+//   {
+//     src: 'lib/*.js',
+//     dest: 'dist/',
+//     flatten: true
+//   },
+//   {
+//     src: 'lib/*.js',
+//     dest: 'dist/',
+//     options: {
+//       expand: true,
+//       flatten: true
+//     }
+//   },
+// ]
