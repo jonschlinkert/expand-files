@@ -30,7 +30,7 @@ files({
 ]
 ```
 
-See the [extensive examples](./examples.md) to see some of the possible configurations.
+See [examples](./examples.md) of possible configurations.
 
 ## Install
 
