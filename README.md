@@ -1,4 +1,4 @@
-# expand-files [![NPM version](https://badge.fury.io/js/expand-files.svg)](http://badge.fury.io/js/expand-files)
+# expand-files [![NPM version](https://badge.fury.io/js/expand-files.svg)](http://badge.fury.io/js/expand-files)  [![Build Status](https://travis-ci.org/jonschlinkert/expand-files.svg)](https://travis-ci.org/jonschlinkert/expand-files)
 
 > Expand glob patterns in a declarative configuration into src-dest mappings.
 
