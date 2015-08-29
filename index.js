@@ -126,8 +126,13 @@ Files.prototype = {
 
     // store the original `src`
     var orig = config.src;
-    // attempt to expand glob patterns
-    config.src = glob.sync(config.src, clone(config.options));
+    try {
+      // attempt to expand glob patterns
+      config.src = glob.sync(config.src, clone(config.options));
+    } catch(err) {
+      err.message = err.message + ': ' + JSON.stringify(config.src);
+      throw err;
+    }
 
     if (!config.src.length) {
       if (config.options.nonull === true) {
