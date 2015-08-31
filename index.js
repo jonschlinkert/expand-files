@@ -45,6 +45,56 @@ Files.prototype = {
   constructor: Files,
 
   /**
+   * Expand glob patterns in `src`.
+   *
+   * @param {Object} `config`
+   * @return {Object}
+   */
+
+  expand: function(config) {
+    var opts = pick(config, reserved.options);
+    var rest = omit(config, reserved.options);
+    config.options = merge({}, opts, rest.options);
+
+    if (!config.src) return this.normalize(config);
+
+    // grunt compatibility
+    if (config.destBase && !config.dest) {
+      config.dest = config.destBase;
+      delete config.destBase;
+    }
+    if (config.srcBase && !config.cwd) {
+      config.cwd = config.srcBase;
+      delete config.srcBase;
+    }
+
+    // store the original `src`
+    var orig = config.src;
+    try {
+      // attempt to expand glob patterns
+      config.src = glob.sync(config.src, clone(config.options));
+    } catch(err) {
+      err.message = err.message + ': ' + JSON.stringify(config.src);
+      throw err;
+    }
+
+    if (!config.src.length) {
+      if (config.options.nonull === true) {
+        config.src = orig;
+      } else {
+        config.src = [];
+      }
+      return utils.arrayify(config);
+    }
+
+    if (config.options.expand === true) {
+      return this.expandMapping(config);
+    }
+    var res = pick(config, ['src', 'dest']);
+    return utils.arrayify(res);
+  },
+
+  /**
    * Normalize the configuration passed to
    * the constructor.
    *
@@ -98,56 +148,6 @@ Files.prototype = {
     config.options = options || {};
     config.dest = dest || '';
     return config;
-  },
-
-  /**
-   * Expand glob patterns in `src`.
-   *
-   * @param {Object} `config`
-   * @return {Object}
-   */
-
-  expand: function(config) {
-    var opts = pick(config, reserved.options);
-    var rest = omit(config, reserved.options);
-    config.options = merge({}, opts, rest.options);
-
-    if (!config.src) return this.normalize(config);
-
-    // grunt compatibility
-    if (config.destBase && !config.dest) {
-      config.dest = config.destBase;
-      delete config.destBase;
-    }
-    if (config.srcBase && !config.cwd) {
-      config.cwd = config.srcBase;
-      delete config.srcBase;
-    }
-
-    // store the original `src`
-    var orig = config.src;
-    try {
-      // attempt to expand glob patterns
-      config.src = glob.sync(config.src, clone(config.options));
-    } catch(err) {
-      err.message = err.message + ': ' + JSON.stringify(config.src);
-      throw err;
-    }
-
-    if (!config.src.length) {
-      if (config.options.nonull === true) {
-        config.src = orig;
-      } else {
-        config.src = [];
-      }
-      return utils.arrayify(config);
-    }
-
-    if (config.options.expand === true) {
-      return this.expandMapping(config);
-    }
-    var res = pick(config, ['src', 'dest']);
-    return utils.arrayify(res);
   },
 
   /**
