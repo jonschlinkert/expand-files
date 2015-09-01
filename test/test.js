@@ -15,9 +15,21 @@ var inspect = function(obj) {
 };
 
 describe('files', function () {
+  describe('files array', function () {
+    it('should make dest an empty string when undefined:', function () {
+      var actual = files(['index.js', '*.md', '.*']);
+      assert(actual[0].dest === '');
+    });
+
+    it('should create a src from the files array', function () {
+      var actual = files(['index.js', '*.md', '.*']);
+      assert(actual[0].src.length > 0);
+    });
+  });
+
   describe('expand', function () {
     it('should create a node when no `src` exists', function () {
-      var actual = files({foo: 'bar'});
+      var actual = files({'foo': 'bar'});
       assert.deepEqual(actual, [{
         options: {},
         dest: 'foo',

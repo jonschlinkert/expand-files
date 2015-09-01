@@ -57,6 +57,7 @@
     "related": {
       "list": [
         "files-objects",
+        "expand",
         "expand-config",
         "expand-files",
         "expand-task",

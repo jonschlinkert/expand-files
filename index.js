@@ -14,6 +14,7 @@ var clone = require('clone-deep');
 var pick = require('object.pick');
 var omit = require('object.omit');
 var merge = require('mixin-deep');
+var mapDest = require('map-dest');
 var parsePath = require('parse-filepath');
 var toMapping = require('files-objects');
 var reserved = require('./lib/reserved');
@@ -90,8 +91,10 @@ Files.prototype = {
     if (config.options.expand === true) {
       return this.expandMapping(config);
     }
-    var res = pick(config, ['src', 'dest']);
-    return utils.arrayify(res);
+
+    // use rename function to modify dest path
+    config.dest = mapDest.rename(config.dest, config.src, config);
+    return utils.arrayify(config);
   },
 
   /**
@@ -119,6 +122,42 @@ Files.prototype = {
       }
     }
     if (!files.length) return orig;
+    return files;
+  },
+
+  /**
+   * Expand `src-dest` mappings.
+   *
+   * @param {Object} `config`
+   * @return {Object}
+   */
+
+  expandMapping: function (config) {
+    var len = config.src.length, i = -1;
+    var filter = this.filter(config.options);
+    var files = [];
+
+    while (++i < len) {
+      var fp = config.src[i];
+      if (!filter(fp)) continue;
+
+      var result = mapDest(fp, config.dest, config.options);
+      if (result === false) continue;
+
+      var dest = utils.unixify(result.dest);
+      var src = utils.unixify(result.src);
+      if (this.cache[dest]) {
+        this.cache[dest].src.push(src);
+      } else {
+        result.src = [src];
+        var res = result;
+        if (config.options.extend) {
+          res = merge({}, config, res);
+        }
+        files.push(res);
+        this.cache[dest] = this.cache[dest] || result;
+      }
+    }
     return files;
   },
 
@@ -151,71 +190,6 @@ Files.prototype = {
   },
 
   /**
-   * Expand `src-dest` mappings.
-   *
-   * @param {Object} `config`
-   * @return {Object}
-   */
-
-  expandMapping: function (config) {
-    var len = config.src.length, i = -1;
-    var files = [];
-
-    while (++i < len) {
-      var result = this.mapDest(config.src[i], config.dest, config);
-      if (result === false) continue;
-      var dest = utils.unixify(result.dest);
-      var src = utils.unixify(result.src);
-      if (this.cache[dest]) {
-        this.cache[dest].src.push(src);
-      } else {
-        result.src = [src];
-        var res = result;
-        if (config.options.extend) {
-          res = merge({}, config, res);
-        }
-        files.push(res);
-        this.cache[dest] = this.cache[dest] || result;
-      }
-    }
-    return files;
-  },
-
-  /**
-   * Calculate destination paths based on configuration.
-   *
-   * @param {String|Array} `src`
-   * @param {String} `dest`
-   * @param {Object} `config`
-   * @return {Object}
-   */
-
-  mapDest: function (src, dest, config) {
-    var opts = config.options;
-    var fp = src;
-
-    var isMatch = this.filter(fp, opts);
-    if (!isMatch) return false;
-
-    // if `options.flatten` is defined, use the `src` basename
-    if (opts.flatten) fp = path.basename(fp);
-
-    // if `options.ext` is defined, use it to replace extension
-    if (opts.hasOwnProperty('ext')) {
-      fp = utils.replaceExt(fp, opts);
-    }
-
-    // use rename function to modify dest path
-    var result = this.rename(dest, fp, config);
-
-    // if `options.cwd` is defined, prepend it to `src`
-    if (opts.cwd) {
-      src = path.join(opts.cwd, src);
-    }
-    return {src: src, dest: result};
-  },
-
-  /**
    * Default filter function.
    *
    * @param {String} `fp`
@@ -223,47 +197,48 @@ Files.prototype = {
    * @return {Boolean} Returns `true` if a file matches.
    */
 
-  filter: function(fp, opts) {
+  filter: function(opts) {
     var filter = opts.filter;
-    var isMatch = true;
 
-    if (!filter) return isMatch;
+    return function (fp) {
+      var isMatch = true;
+      if (!filter) return isMatch;
 
-    // if `options.filter` is a function, use it to
-    // conditionally exclude a file from the result set
-    if (typeof filter === 'function') {
-      isMatch = filter(fp);
+      // if `options.filter` is a function, use it to
+      // conditionally exclude a file from the result set
+      if (typeof filter === 'function') {
+        isMatch = filter(fp);
 
-    // if `options.filter` is a string and matches a `fs.lstat`
-    // method, call the `fs.lstat` method on the file
-    } else if (typeof filter === 'string') {
-      if (['isFile', 'isDirectory', 'isSymbolicLink'].indexOf(filter) < 0) {
-        var msg = '[options.filter] `' + filter
-          + '` is not a valid fs.lstat method name';
-        throw new Error(msg);
+      // if `options.filter` is a string and matches a `fs.lstat`
+      // method, call the `fs.lstat` method on the file
+      } else if (typeof filter === 'string') {
+        validateMethod(filter, opts);
+        try {
+          isMatch = fs.lstatSync(fp)[filter]();
+        } catch (err) {
+          isMatch = false;
+        }
       }
-      try {
-        isMatch = fs.lstatSync(fp)[filter]();
-      } catch (err) {
-        isMatch = false;
-      }
+      return isMatch;
     }
-    return isMatch;
-  },
-
-  /**
-   * Default rename function.
-   */
-
-  rename: function(dest, src, config) {
-    var opts = config.options;
-    if (typeof opts.rename === 'function') {
-      var ctx = parsePath(src);
-      return opts.rename.call(ctx, dest, src, opts);
-    }
-    return dest ? path.join(dest, src) : src;
   }
 };
+
+/**
+ * When the `filter` option is a string, validate
+ * that the it's a valid `fs.lstat` method name.
+ *
+ * @param {String} `method`
+ * @return {Boolean}
+ */
+
+function validateMethod(method) {
+  var methods = ['isFile', 'isDirectory', 'isSymbolicLink'];
+  if (methods.indexOf(method) < 0) {
+    var msg = '[options.filter] `' + method + '` is not a valid fs.lstat method name';
+    throw new Error(msg);
+  }
+}
 
 /**
  * Expose `Files`. For now file expansion is done
