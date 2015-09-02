@@ -8,6 +8,7 @@
 'use strict';
 
 var fs = require('fs');
+var path = require('path');
 var globby = require('lazy-globby');
 var typeOf = require('kind-of');
 var clone = require('clone-deep');
@@ -84,12 +85,21 @@ Files.prototype = {
       return this.expandMapping(config);
     }
 
+    var opts = config.options;
+
     // use rename function to modify dest path
-    config.dest = mapDest.rename(config.dest, config.src, config.options);
+    config.dest = mapDest.rename(config.dest, config.src, opts);
+
+    if (opts.cwd) {
+      config.src = config.src.map(function (fp) {
+        if (hasPath(opts.cwd, fp)) return fp;
+        return path.join(opts.cwd, fp);
+      });
+    }
 
     // if `transform` is defined, use it to modify the resulting config
-    if (typeof config.options.transform === 'function') {
-      config = config.options.transform(config);
+    if (typeof opts.transform === 'function') {
+      config = opts.transform(config);
     }
     return utils.arrayify(config);
   },
@@ -228,6 +238,11 @@ Files.prototype = {
     };
   }
 };
+
+function hasPath(str, fp) {
+  var str = str.replace(/^\/|\/$/g, '');
+  return fp.indexOf(str) !== -1;
+}
 
 /**
  * When the `filter` option is a string, validate

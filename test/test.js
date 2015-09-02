@@ -65,9 +65,9 @@ describe('files', function () {
 
     it('should use a `cwd` to expand `src` glob patterns:', function () {
       var actual = files({src: '*.txt', options: {cwd: 'test/fixtures'}});
-      assert(utils.contains(actual[0].src, 'a.txt'));
-      assert(utils.contains(actual[0].src, 'b.txt'));
-      assert(utils.contains(actual[0].src, 'c.txt'));
+      assert(utils.contains(actual[0].src, 'test/fixtures/a.txt'));
+      assert(utils.contains(actual[0].src, 'test/fixtures/b.txt'));
+      assert(utils.contains(actual[0].src, 'test/fixtures/c.txt'));
     });
   });
 
