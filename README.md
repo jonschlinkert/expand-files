@@ -257,7 +257,7 @@ files({src: '*.js', dest: 'dist/', expand: true});
 ## Related projects
 
 * [expand](https://www.npmjs.com/package/expand): Recursively resolve templates in an object, string or array. | [homepage](https://github.com/jonschlinkert/expand)
-* [expand-config](https://www.npmjs.com/package/expand-config): Expand tasks, targets and options in a declarative configuraiton. | [homepage](https://github.com/jonschlinkert/expand-config)
+* [expand-config](https://www.npmjs.com/package/expand-config): Expand tasks, targets and files in a declarative configuration. | [homepage](https://github.com/jonschlinkert/expand-config)
 * [expand-target](https://www.npmjs.com/package/expand-target): Expand target definitions in a declarative configuration. | [homepage](https://github.com/jonschlinkert/expand-target)
 * [expand-task](https://www.npmjs.com/package/expand-task): Expand and normalize task definitions in a declarative configuration. | [homepage](https://github.com/jonschlinkert/expand-task)
 * [files-objects](https://www.npmjs.com/package/files-objects): Expand files objects into src-dest mappings. | [homepage](https://github.com/jonschlinkert/files-objects)

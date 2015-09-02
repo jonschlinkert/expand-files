@@ -86,6 +86,11 @@ Files.prototype = {
     }
 
     var opts = config.options;
+    var filter = this.filter(opts);
+
+    config.src = config.src.filter(function (fp) {
+      return filter(fp);
+    });
 
     // use rename function to modify dest path
     config.dest = mapDest.rename(config.dest, config.src, opts);

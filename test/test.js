@@ -585,7 +585,7 @@ describe('expand mapping:', function () {
         },
         src: ['*.json', '*.js']
       });
-      actual[0].src.should.containEql('x.js');
+      assert(!actual[0].src.length);
     });
 
     it('should support filtering by `fs.lstat` type: `.isDirectory()`', function () {
