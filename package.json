@@ -1,7 +1,7 @@
 {
   "name": "expand-files",
   "description": "Expand glob patterns in a declarative configuration into src-dest mappings.",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "homepage": "https://github.com/jonschlinkert/expand-files",
   "author": "Jon Schlinkert (https://github.com/jonschlinkert)",
   "repository": "jonschlinkert/expand-files",
@@ -23,16 +23,18 @@
   "dependencies": {
     "clone-deep": "^0.2.2",
     "files-objects": "^0.1.1",
-    "globby": "^2.1.0",
+    "kind-of": "^2.0.1",
+    "lazy-globby": "^0.1.1",
+    "map-dest": "^0.1.0",
     "mixin-deep": "^1.1.3",
     "object.omit": "^2.0.0",
-    "object.pick": "^1.1.1",
-    "parse-filepath": "^0.6.3"
+    "object.pick": "^1.1.1"
   },
   "devDependencies": {
     "expand": "^0.1.2",
     "for-in": "^0.1.4",
     "mocha": "*",
+    "parse-filepath": "^0.6.3",
     "should": "*",
     "stringify-object": "^2.3.0",
     "to-clipboard": "^0.1.0"
@@ -61,7 +63,8 @@
         "expand-config",
         "expand-files",
         "expand-task",
-        "expand-target"
+        "expand-target",
+        "map-dest"
       ]
     }
   }
