@@ -8,14 +8,13 @@
 'use strict';
 
 var fs = require('fs');
-var path = require('path');
-var glob = require('globby');
+var globby = require('lazy-globby');
+var typeOf = require('kind-of');
 var clone = require('clone-deep');
 var pick = require('object.pick');
 var omit = require('object.omit');
 var merge = require('mixin-deep');
 var mapDest = require('map-dest');
-var parsePath = require('parse-filepath');
 var toMapping = require('files-objects');
 var reserved = require('./lib/reserved');
 var utils = require('./lib/utils');
@@ -29,12 +28,13 @@ function Files(config, dest, options) {
   if (!(this instanceof Files)) {
     return new Files(config, dest, options);
   }
-  if (arguments.length > 1 || typeof config !== 'object') {
+  if (arguments.length > 1 || typeOf(config) !== 'object') {
     config = this.toConfig.apply(this, arguments);
   }
-  this.cache = {};
   config = config || {};
   config.options = config.options || {};
+  this.statCache = {};
+  this.pathCache = {};
   return this.expand(config);
 }
 
@@ -55,23 +55,15 @@ Files.prototype = {
   expand: function(config) {
     var opts = pick(config, reserved.options);
     var rest = omit(config, reserved.options);
+
     config.options = merge({}, opts, rest.options);
-
     if (!config.src) return this.normalize(config);
-
-    // grunt compatibility
-    if (config.destBase && !config.dest) {
-      config.dest = config.destBase;
-      delete config.destBase;
-    }
-    if (config.srcBase && !config.cwd) {
-      config.cwd = config.srcBase;
-      delete config.srcBase;
-    }
 
     // store the original `src`
     var orig = config.src;
     try {
+      // lazily require globby
+      var glob = globby();
       // attempt to expand glob patterns
       config.src = glob.sync(config.src, clone(config.options));
     } catch(err) {
@@ -93,7 +85,12 @@ Files.prototype = {
     }
 
     // use rename function to modify dest path
-    config.dest = mapDest.rename(config.dest, config.src, config);
+    config.dest = mapDest.rename(config.dest, config.src, config.options);
+
+    // if `transform` is defined, use it to modify the resulting config
+    if (typeof config.options.transform === 'function') {
+      config = config.options.transform(config);
+    }
     return utils.arrayify(config);
   },
 
@@ -141,21 +138,27 @@ Files.prototype = {
       var fp = config.src[i];
       if (!filter(fp)) continue;
 
-      var result = mapDest(fp, config.dest, config.options);
+      // `mapDest` always returns an array, since it can handle
+      // `src` arrays, be we will always only pass one src file
+      var result = mapDest(fp, config.dest, config.options)[0];
       if (result === false) continue;
 
       var dest = utils.unixify(result.dest);
       var src = utils.unixify(result.src);
-      if (this.cache[dest]) {
-        this.cache[dest].src.push(src);
+
+      if (this.pathCache[dest]) {
+        this.pathCache[dest].src.push(src);
       } else {
         result.src = [src];
         var res = result;
-        if (config.options.extend) {
-          res = merge({}, config, res);
+
+        // if `transform` is defined, use it to modify the result
+        if (typeof config.options.transform === 'function') {
+          res = config.options.transform(res, config);
         }
+
         files.push(res);
-        this.cache[dest] = this.cache[dest] || result;
+        this.pathCache[dest] = this.pathCache[dest] || result;
       }
     }
     return files;
@@ -199,6 +202,7 @@ Files.prototype = {
 
   filter: function(opts) {
     var filter = opts.filter;
+    var self = this;
 
     return function (fp) {
       var isMatch = true;
@@ -214,13 +218,14 @@ Files.prototype = {
       } else if (typeof filter === 'string') {
         validateMethod(filter, opts);
         try {
-          isMatch = fs.lstatSync(fp)[filter]();
+          var stat = self.statCache[fp] || (self.statCache[fp] = fs.lstatSync(fp));
+          isMatch = stat[filter]();
         } catch (err) {
           isMatch = false;
         }
       }
       return isMatch;
-    }
+    };
   }
 };
 

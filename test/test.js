@@ -7,12 +7,27 @@ var assert = require('assert');
 var should = require('should');
 var merge = require('mixin-deep');
 var expand = require('expand');
+var parse = require('parse-filepath');
 var utils = require('./support/utils');
 var files = require('../');
 
 var inspect = function(obj) {
   return util.inspect(obj, null, 10);
 };
+
+function containEql(actual, expected) {
+  var len = expected.length;
+  var alen = actual.length;
+  len = Math.min(len, alen);
+
+  while (len--) {
+    var a = actual[len];
+    var b = expected[len];
+
+    a.src.should.eql(b.src);
+    a.dest.should.equal(b.dest);
+  }
+}
 
 describe('files', function () {
   describe('files array', function () {
@@ -59,10 +74,54 @@ describe('files', function () {
   describe('options.expand', function () {
     describe('when expand is true', function () {
       it('should join the `cwd` to expanded `src` paths:', function () {
-        var actual = files({src: '*.txt', options: {cwd: 'test/fixtures', expand: true}});
+        var actual = files({
+          src: '*.txt',
+          options: {
+            cwd: 'test/fixtures',
+            expand: true
+          }
+        });
+
         assert.deepEqual(actual[0].src, ['test/fixtures/a.txt']);
         assert.deepEqual(actual[1].src, ['test/fixtures/b.txt']);
         assert.deepEqual(actual[2].src, ['test/fixtures/c.txt']);
+      });
+
+      it('should append `destBase` to generated dests:', function () {
+        var actual = files({
+          src: '*.txt',
+          options: {
+            cwd: 'test/fixtures',
+            destBase: 'dist/',
+            expand: true
+          }
+        });
+
+        assert.deepEqual(actual[0].src, ['test/fixtures/a.txt']);
+        assert.deepEqual(actual[0].dest, 'dist/a.txt');
+        assert.deepEqual(actual[1].src, ['test/fixtures/b.txt']);
+        assert.deepEqual(actual[1].dest, 'dist/b.txt');
+        assert.deepEqual(actual[2].src, ['test/fixtures/c.txt']);
+        assert.deepEqual(actual[2].dest, 'dist/c.txt');
+      });
+
+      it('should append `destBase` to `dest` of generated dests:', function () {
+        var actual = files({
+          src: '*.txt',
+          dest: 'site',
+          options: {
+            cwd: 'test/fixtures',
+            destBase: 'dist/',
+            expand: true
+          }
+        });
+
+        assert.deepEqual(actual[0].src, ['test/fixtures/a.txt']);
+        assert.deepEqual(actual[0].dest, 'dist/site/a.txt');
+        assert.deepEqual(actual[1].src, ['test/fixtures/b.txt']);
+        assert.deepEqual(actual[1].dest, 'dist/site/b.txt');
+        assert.deepEqual(actual[2].src, ['test/fixtures/c.txt']);
+        assert.deepEqual(actual[2].dest, 'dist/site/c.txt');
       });
 
       it('should expand `src` paths into src-dest mappings:', function () {
@@ -73,14 +132,13 @@ describe('files', function () {
           }
         });
 
-        actual.should.containEql({
+        containEql(actual, [{
           src: [ 'test/fixtures/a.txt' ],
           dest: 'test/fixtures/a.txt'
-        });
-        actual.should.containEql({
+        }, {
           src: [ 'test/fixtures/b.txt' ],
           dest: 'test/fixtures/b.txt'
-        });
+        }]);
       });
 
       it('should create `dest` properties using the src basename:', function () {
@@ -113,14 +171,15 @@ describe('files', function () {
           }
         });
 
-        actual.should.containEql({
-          src: [ 'test/fixtures/a.txt' ],
+        var expected = [{
+          src: ['test/fixtures/a.txt'],
           dest: 'a.txt'
-        });
-        actual.should.containEql({
-          src: [ 'test/fixtures/b.txt' ],
+        }, {
+          src: ['test/fixtures/b.txt'],
           dest: 'b.txt'
-        });
+        }];
+
+        containEql(actual, expected);
       });
     });
   });
@@ -143,7 +202,7 @@ describe('files', function () {
         'foo/': 'test/fixtures/*.txt',
         'bar/': 'test/fixtures/*.txt'
       });
-      actual.should.eql(expected);
+      containEql(actual, expected);
     });
 
     it('should expand files objects when `expand` is on options:', function () {
@@ -152,7 +211,8 @@ describe('files', function () {
         'foo/': 'test/fixtures/*.txt',
         'bar/': 'test/fixtures/*.txt'
       });
-      actual.should.eql(expected);
+
+      containEql(actual, expected);
     });
 
     it('should expand files objects when expand is on the root:', function () {
@@ -161,7 +221,8 @@ describe('files', function () {
         'foo/': 'test/fixtures/*.txt',
         'bar/': 'test/fixtures/*.txt'
       });
-      actual.should.eql(expected);
+
+      containEql(actual, expected);
     });
 
     it('should expand files objects when `src` is an array:', function () {
@@ -170,7 +231,8 @@ describe('files', function () {
         'foo/': ['test/fixtures/*.txt'],
         'bar/': ['test/fixtures/*.txt']
       });
-      actual.should.eql(expected);
+
+      containEql(actual, expected);
     });
   });
 
@@ -185,11 +247,13 @@ describe('files', function () {
         dest: 'dest',
       });
 
-      assert.deepEqual(actual, [
+      var expected = [
         {dest: 'dest/a.txt', src: ['test/fixtures/a/a.txt']},
         {dest: 'dest/aa.txt', src: ['test/fixtures/a/aa/aa.txt']},
         {dest: 'dest/aaa.txt', src: ['test/fixtures/a/aa/aaa/aaa.txt']},
-      ]);
+      ];
+
+      containEql(actual, expected);
     });
 
     it('should not flatten dest paths when `flatten` is false', function () {
@@ -202,11 +266,13 @@ describe('files', function () {
         dest: 'dest',
       });
 
-      assert.deepEqual(actual, [
+      var expected = [
         {dest: 'dest/test/fixtures/a/a.txt', src: ['test/fixtures/a/a.txt']},
         {dest: 'dest/test/fixtures/a/aa/aa.txt', src: ['test/fixtures/a/aa/aa.txt']},
         {dest: 'dest/test/fixtures/a/aa/aaa/aaa.txt', src: ['test/fixtures/a/aa/aaa/aaa.txt']},
-      ]);
+      ];
+
+      containEql(actual, expected);
     });
 
     it('should not flatten dest paths when flatten is undefined:', function () {
@@ -218,26 +284,29 @@ describe('files', function () {
         dest: 'dest',
       });
 
-      assert.deepEqual(actual, [
+      var expected = [
         {dest: 'dest/test/fixtures/a/a.txt', src: ['test/fixtures/a/a.txt']},
         {dest: 'dest/test/fixtures/a/aa/aa.txt', src: ['test/fixtures/a/aa/aa.txt']},
         {dest: 'dest/test/fixtures/a/aa/aaa/aaa.txt', src: ['test/fixtures/a/aa/aaa/aaa.txt']},
-      ]);
+      ];
+
+      containEql(actual, expected);
     });
   });
 });
 
 describe('expand mapping:', function () {
   var actual, expected;
+  var cwd;
 
   beforeEach(function (done) {
-    this.cwd = process.cwd();
+    cwd = process.cwd();
     process.chdir('test/fixtures');
     done();
   });
 
   afterEach(function (done) {
-    process.chdir(this.cwd);
+    process.chdir(cwd);
     done();
   });
 
@@ -265,11 +334,20 @@ describe('expand mapping:', function () {
         dest: 'dest/'
       });
 
-      assert.deepEqual(withSlash, expected);
-      assert.deepEqual(withoutSlash, expected);
+      containEql(withSlash, expected);
+      containEql(withoutSlash, expected);
     });
   });
 
+  describe('options.flatten:', function () {
+    it('should return the original pattern when no files are found:', function () {
+      var actual = files({
+        options: {nonull: true},
+        src: ['*.foo']
+      });
+      actual[0].src.should.containEql('*.foo');
+    });
+  });
   describe('options.flatten:', function () {
     it('should flatten dest paths by joining pre-dest to src filepath:', function () {
       var expected = [{
@@ -292,7 +370,7 @@ describe('expand mapping:', function () {
         dest: 'dest'
       });
 
-      assert.deepEqual(actual, expected);
+      containEql(actual, expected);
     });
   });
 
@@ -317,10 +395,20 @@ describe('expand mapping:', function () {
         src: ['**/foo.*/**'],
         dest: 'dest',
       });
-      assert.deepEqual(actual, expected);
+
+      containEql(actual, expected);
     });
 
     it('should use extension when it is an empty string:', function () {
+      var actual = files({
+        options: {
+          expand: true,
+          ext: ''
+        },
+        src: ['a/**/*.txt'],
+        dest: 'dest',
+      });
+
       expected = [{
         dest: 'dest/a/a',
         src: ['a/a.txt']
@@ -331,14 +419,8 @@ describe('expand mapping:', function () {
         dest: 'dest/a/aa/aaa/aaa',
         src: ['a/aa/aaa/aaa.txt']
       }, ];
-      assert.deepEqual(files({
-        options: {
-          expand: true,
-          ext: ''
-        },
-        src: ['a/**/*.txt'],
-        dest: 'dest',
-      }), expected);
+
+      containEql(actual, expected);
     });
   });
 
@@ -363,7 +445,7 @@ describe('expand mapping:', function () {
         src: ['foo.*/**'],
         dest: 'dest'
       });
-      assert.deepEqual(actual, expected);
+      containEql(actual, expected);
     });
 
     it('should replace everything after the last dot in the filename.', function () {
@@ -385,7 +467,7 @@ describe('expand mapping:', function () {
           dest: 'dest/foo.bar/baz.qux/fez.faz/x.y.foo' },
         { src: [ 'foo.bar/baz.qux/foo' ],
           dest: 'dest/foo.bar/baz.qux/foo.foo' } ]
-      assert.deepEqual(actual, expected);
+      containEql(actual, expected);
     });
   });
 
@@ -410,13 +492,13 @@ describe('expand mapping:', function () {
         dest: 'dest/aa/aaa/aaa.txt',
         src: ['a/aa/aaa/aaa.txt']
       }];
-      assert.deepEqual(actual, expected);
+      containEql(actual, expected);
     });
   });
 
   describe('options.rename:', function () {
     it('should support custom rename functions:', function () {
-      var actual = files({
+      var one = files({
         options: {
           expand: true,
           flatten: true,
@@ -440,11 +522,9 @@ describe('expand mapping:', function () {
         src: ['a/aa/aaa/aaa.txt']
       }];
 
-      assert.deepEqual(actual, expected);
-    });
+      containEql(one, expected);
 
-    it('should expose target properties as `this` to rename function:', function () {
-      var actual = files({
+      var two = files({
         options: {
           expand: true,
           filter: 'isFile',
@@ -454,16 +534,17 @@ describe('expand mapping:', function () {
           },
           rename: function (dest, fp, options) {
             var pattern = options.permalink;
-            var ctx = merge({}, this, options, {dest: dest});
-            ctx.ext = ctx.extname;
+            var ctx = options;
+            ctx.ext = path.extname(fp);
+            ctx.dest = dest;
+            ctx.basename = path.basename(fp);
             return expand(pattern, ctx, {regex: /:([(\w ),]+)/});
           }
         },
         src: ['**/*'],
         dest: 'foo/bar'
       });
-
-      actual[0].dest.should.equal('foo/bar/A.TXT');
+      two[0].dest.should.equal('foo/bar/A.TXT');
     });
 
     it('should group expanded `src` arrays by dest paths:', function () {
@@ -490,8 +571,21 @@ describe('expand mapping:', function () {
         src: ['b/alpha.js', 'b/beta.js', 'b/gamma.js'],
         dest: 'dest/all.js'
       }];
+      containEql(actual, expected);
+    });
+  });
 
-      assert.deepEqual(actual, expected);
+  describe('options.filter:', function () {
+    it('should support custom filter functions:', function () {
+      var actual = files({
+        options: {
+          filter: function (str) {
+            return !/\.js$/.test(str);
+          }
+        },
+        src: ['*.json', '*.js']
+      });
+      actual[0].src.should.containEql('x.js');
     });
 
     it('should support filtering by `fs.lstat` type: `.isDirectory()`', function () {
@@ -513,7 +607,26 @@ describe('expand mapping:', function () {
         dest: 'dest/all'
       }];
 
-      assert.deepEqual(actual, expected);
+      actual[0].src.should.eql(['a/aa', 'a/aa/aaa']);
+      actual[0].dest.should.equal('dest/all');
+    });
+
+    it('should filter by fs.lstat method (false if file !exists):', function () {
+      var actual = files({
+        filter: 'isFile',
+        src: 'a/b/c.txt'
+      });
+      assert(!actual[0].src.length);
+    });
+
+    it('should filter by fs.lstat method (truthy if file exists):', function () {
+       var actual = files({
+        options: {
+          filter: 'isFile',
+        },
+        src: ['*.txt']
+      });
+      assert(actual[0].src.length > 0);
     });
 
     it('should support filtering by `fs.lstat` type: `.isFile()`', function () {
@@ -538,7 +651,8 @@ describe('expand mapping:', function () {
         dest: 'dest/all.js'
       }];
 
-      assert.deepEqual(actual, expected);
+      actual[0].src.should.eql(['a/a.txt', 'a/aa/aa.txt', 'a/aa/aaa/aaa.txt']);
+      actual[1].src.should.eql(['b/alpha.js', 'b/beta.js', 'b/gamma.js']);
     });
 
     it('should throw an error when the filter argument is invalid:', function () {
@@ -552,6 +666,36 @@ describe('expand mapping:', function () {
           dest: 'dest'
         });
       }).should.throw('[options.filter] `isFil` is not a valid fs.lstat method name');
+    });
+  });
+
+  describe('options.transform', function () {
+    it('should modify the result with a custom transform function', function () {
+       var actual = files({
+        options: {
+          transform: function (config) {
+            config.pipeline = function(){};
+            return config;
+          }
+        },
+        src: ['*.txt']
+      });
+      assert(typeof actual[0].pipeline === 'function');
+    });
+
+    it('should work when `expand` is true:', function () {
+       var actual = files({
+        options: {
+          expand: true,
+          transform: function (config) {
+            config.pipeline = function(){};
+            return config;
+          }
+        },
+        src: ['*.txt']
+      });
+
+      assert(typeof actual[0].pipeline === 'function');
     });
   });
 });
