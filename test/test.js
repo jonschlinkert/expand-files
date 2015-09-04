@@ -78,7 +78,6 @@ describe('files', function () {
       actual[0].should.have.property('src');
       assert(Array.isArray(actual[0].src));
     });
-
   });
 
   describe('globbing', function () {
@@ -262,6 +261,39 @@ describe('files', function () {
       });
 
       containEql(actual, expected);
+    });
+  });
+
+  describe('options.process:', function () {
+    it('should process templates in config values:', function () {
+      var actual = files({
+        process: true,
+        foo: 'test/fixtures',
+        cwd: '<%= foo %>',
+        bar: '*.js',
+        src: '<%= bar %>'
+      });
+
+      assert(actual[0].src.length > 0);
+      assert(actual[0].options.cwd === 'test/fixtures');
+    });
+
+    it.only('should process templates with `options.parent` values:', function () {
+      var actual = files({
+        options: {
+          process: true,
+          cwd: '<%= foo %>',
+          parent: {
+            foo: 'test/fixtures/parent'
+          }
+        },
+        foo: 'test/fixtures',
+        bar: '*.js',
+        src: '<%= bar %>'
+      });
+
+      assert(actual[0].src.length > 0);
+      assert(actual[0].options.cwd === 'test/fixtures/parent');
     });
   });
 
