@@ -50,6 +50,11 @@ Files.prototype = {
     rest.options = utils.merge({}, opts, rest.options);
     config = rest;
 
+    if (config.options.process === true) {
+      var ctx = utils.merge({}, config, config.options.parent);
+      config = utils.expand(config, ctx);
+    }
+
     if (!config.src) return this.normalize(config);
 
     opts = config.options;
@@ -59,7 +64,7 @@ Files.prototype = {
 
     // store the original `src`
     var orig = config.src;
-    config.src = utils.arrayify(config.src);
+    config.src = utils.flatten(utils.arrayify(config.src));
 
     // expand glob patterns
     if (opts.glob !== false && utils.hasGlob(orig)) {
