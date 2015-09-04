@@ -278,7 +278,7 @@ describe('files', function () {
       assert(actual[0].options.cwd === 'test/fixtures');
     });
 
-    it.only('should process templates with `options.parent` values:', function () {
+    it('should process templates with `options.parent` values:', function () {
       var actual = files({
         options: {
           process: true,
@@ -533,14 +533,44 @@ describe('expand mapping:', function () {
     });
   });
 
+  describe('options.destBase:', function () {
+    it('should prepend destBase to dest:', function () {
+      var actual = files({
+        destBase: 'foo',
+        src: '*.js',
+        dest: 'bar'
+      });
+      assert.equal(actual[0].dest, 'foo/bar');
+    });
+
+    it('should expand a leading tilde in destBase:', function () {
+      var home = process.env[process.platform === 'win32' ? 'USERPROFILE' : 'HOME'];
+      var actual = files({
+        destBase: '~/foo',
+        src: '*.js',
+        dest: 'bar'
+      });
+      assert.equal(actual[0].dest, path.join(home, 'foo/bar'));
+    });
+  });
+
   describe('options.cwd:', function () {
+    it('should append srcBase to the cwd:', function () {
+      var actual = files({
+        srcBase: 'foo',
+        cwd: 'scaffolds',
+        src: '*.txt'
+      });
+      assert.equal(actual[0].options.cwd, 'scaffolds/foo');
+    });
+
     it('should expand a leading tilde in the cwd:', function () {
       var home = process.env[process.platform === 'win32' ? 'USERPROFILE' : 'HOME'];
       var actual = files({
         cwd: '~/scaffolds',
         src: '*.txt'
       });
-      assert(actual[0].options.cwd, path.join(home, 'scaffolds'));
+      assert.equal(actual[0].options.cwd, path.join(home, 'scaffolds'));
     });
 
     it('should expand a leading @ in the cwd:', function () {
@@ -549,7 +579,7 @@ describe('expand mapping:', function () {
         cwd: '@/scaffolds',
         src: '*.txt'
       });
-      assert(actual[0].options.cwd, path.join(gm, 'scaffolds'));
+      assert.equal(actual[0].options.cwd, path.join(gm, 'scaffolds'));
     });
 
     it('should expand a leading @ in the cwd when expand is true:', function () {
@@ -559,7 +589,7 @@ describe('expand mapping:', function () {
         cwd: '@/scaffolds',
         src: '*.txt'
       });
-      assert(actual[0].options.cwd, path.join(gm, 'scaffolds'));
+      assert.equal(actual[0].options.cwd, path.join(gm, 'scaffolds'));
     });
 
     it('should strip cwd from filepath before joined to dest:', function () {

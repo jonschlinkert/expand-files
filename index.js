@@ -61,10 +61,13 @@ Files.prototype = {
     if (opts.cwd) {
       opts.cwd = resolve(opts.cwd);
     }
+    if (opts.srcBase) {
+      opts.cwd = path.join(opts.cwd, opts.srcBase);
+    }
 
     // store the original `src`
     var orig = config.src;
-    config.src = utils.flatten(utils.arrayify(config.src));
+    config.src = utils.flatten(utils.arrayify(config.src)).filter(Boolean);
 
     // expand glob patterns
     if (opts.glob !== false && utils.hasGlob(orig)) {
