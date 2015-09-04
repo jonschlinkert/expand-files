@@ -9,16 +9,8 @@
 
 var fs = require('fs');
 var path = require('path');
-var globby = require('lazy-globby');
-var typeOf = require('kind-of');
-var clone = require('clone-deep');
-var pick = require('object.pick');
-var omit = require('object.omit');
-var merge = require('mixin-deep');
-var mapDest = require('map-dest');
-var toMapping = require('files-objects');
 var reserved = require('./lib/reserved');
-var utils = require('./lib/utils');
+var utils = require('./lib/utils')(require);
 
 /**
  * Create an instance of `Files` to expand src-dest
@@ -29,10 +21,9 @@ function Files(config, dest, options) {
   if (!(this instanceof Files)) {
     return new Files(config, dest, options);
   }
-  if (arguments.length > 1 || typeOf(config) !== 'object') {
+  if (dest || options || utils.typeOf(config) !== 'object') {
     config = this.toConfig.apply(this, arguments);
   }
-  config = config || {};
   config.options = config.options || {};
   this.statCache = {};
   this.pathCache = {};
@@ -54,50 +45,45 @@ Files.prototype = {
    */
 
   expand: function(config) {
-    var opts = pick(config, reserved.options);
-    var rest = omit(config, reserved.options);
+    var opts = utils.pick(config, reserved.options);
+    var rest = utils.omit(config, reserved.options);
+    rest.options = utils.merge({}, opts, rest.options);
+    config = rest;
 
-    config.options = merge({}, opts, rest.options);
     if (!config.src) return this.normalize(config);
+
+    opts = config.options;
+    if (opts.cwd) {
+      opts.cwd = resolve(opts.cwd);
+    }
 
     // store the original `src`
     var orig = config.src;
-    try {
-      // lazily require globby
-      var glob = globby();
-      // attempt to expand glob patterns
-      config.src = glob.sync(config.src, clone(config.options));
-    } catch(err) {
-      err.message = err.message + ': ' + JSON.stringify(config.src);
-      throw err;
+    config.src = utils.arrayify(config.src);
+
+    // expand glob patterns
+    if (opts.glob !== false && utils.hasGlob(orig)) {
+      config.src = utils.glob.sync(config.src, opts);
     }
 
     if (!config.src.length) {
-      if (config.options.nonull === true) {
-        config.src = orig;
-      } else {
-        config.src = [];
-      }
       return utils.arrayify(config);
     }
 
-    if (config.options.expand === true) {
+    if (opts.expand === true) {
       return this.expandMapping(config);
     }
 
-    var opts = config.options;
     var filter = this.filter(opts);
-
     config.src = config.src.filter(function (fp) {
       return filter(fp);
     });
 
     // use rename function to modify dest path
-    config.dest = mapDest.rename(config.dest, config.src, opts);
+    config.dest = utils.mapDest.rename(config.dest, config.src, opts);
 
     if (opts.cwd) {
       config.src = config.src.map(function (fp) {
-        if (hasPath(opts.cwd, fp)) return fp;
         return path.join(opts.cwd, fp);
       });
     }
@@ -118,22 +104,17 @@ Files.prototype = {
    */
 
   normalize: function (config) {
-    var orig = clone(config);
-    var res = toMapping(config);
+    var res = utils.toMapping(config);
     var files = [];
 
-    if (res.hasOwnProperty('files')) {
-      var len = res.files.length, i = -1;
+    var len = res.files.length, i = -1;
 
-      while (++i < len) {
-        var obj = res.files[i];
-        obj.options = obj.options || {};
-        obj = this.expand(obj);
-        delete obj.options;
-        files = files.concat(obj);
-      }
+    while (++i < len) {
+      var obj = res.files[i];
+      obj = this.expand(obj);
+      delete obj.options;
+      files = files.concat(obj);
     }
-    if (!files.length) return orig;
     return files;
   },
 
@@ -155,9 +136,7 @@ Files.prototype = {
 
       // `mapDest` always returns an array, since it can handle
       // `src` arrays, be we will always only pass one src file
-      var result = mapDest(fp, config.dest, config.options)[0];
-      if (result === false) continue;
-
+      var result = utils.mapDest(fp, config.dest, config.options)[0];
       var dest = utils.unixify(result.dest);
       var src = utils.unixify(result.src);
 
@@ -194,15 +173,15 @@ Files.prototype = {
 
   toConfig: function (src, dest, options) {
     if (typeof src !== 'string' && !Array.isArray(src)) {
-      return src;
+      throw new TypeError('expected src to be a string or array.');
     }
     var config = {};
-    config.src = src || '';
     if (typeof dest !== 'string') {
       options = dest;
       dest = '';
     }
     config.options = options || {};
+    config.src = src;
     config.dest = dest || '';
     return config;
   },
@@ -217,11 +196,11 @@ Files.prototype = {
 
   filter: function(opts) {
     var filter = opts.filter;
+    var statType = opts.statType || 'lstatSync';
     var self = this;
 
     return function (fp) {
       var isMatch = true;
-      if (!filter) return isMatch;
 
       // if `options.filter` is a function, use it to
       // conditionally exclude a file from the result set
@@ -231,22 +210,38 @@ Files.prototype = {
       // if `options.filter` is a string and matches a `fs.lstat`
       // method, call the `fs.lstat` method on the file
       } else if (typeof filter === 'string') {
-        validateMethod(filter, opts);
+        validateMethod(filter, statType);
+
         try {
-          var stat = self.statCache[fp] || (self.statCache[fp] = fs.lstatSync(fp));
+          var stat = self.statCache[fp] || (self.statCache[fp] = fs[statType](fp));
           isMatch = stat[filter]();
         } catch (err) {
           isMatch = false;
         }
+      } else {
+        isMatch = true;
       }
       return isMatch;
     };
   }
 };
 
-function hasPath(str, fp) {
-  var str = str.replace(/^\/|\/$/g, '');
-  return fp.indexOf(str) !== -1;
+/**
+ * Resolve paths with special leading characters, in the
+ * spirit of bash.
+ *
+ * @param {String} `dir`
+ * @return {String}
+ */
+
+function resolve(dir) {
+  if (dir.charAt(0) === '~') {
+    dir = utils.tilde(dir);
+  }
+  if (dir.charAt(0) === '@') {
+    dir = path.join(utils.gm, dir.slice(1));
+  }
+  return dir;
 }
 
 /**
@@ -257,10 +252,11 @@ function hasPath(str, fp) {
  * @return {Boolean}
  */
 
-function validateMethod(method) {
+function validateMethod(method, type) {
   var methods = ['isFile', 'isDirectory', 'isSymbolicLink'];
   if (methods.indexOf(method) < 0) {
-    var msg = '[options.filter] `' + method + '` is not a valid fs.lstat method name';
+    var msg = '[options.filter] `' + method
+      + '` is not a valid fs.' + type + ' method name';
     throw new Error(msg);
   }
 }

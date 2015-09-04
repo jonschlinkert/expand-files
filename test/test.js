@@ -5,6 +5,7 @@ var path = require('path');
 var util = require('util');
 var assert = require('assert');
 var should = require('should');
+var gm = require('global-modules');
 var merge = require('mixin-deep');
 var expand = require('expand');
 var parse = require('parse-filepath');
@@ -30,6 +31,26 @@ function containEql(actual, expected) {
 }
 
 describe('files', function () {
+  describe('string', function () {
+    it('should support src as a string:', function () {
+      var actual = files('index.js');
+      assert(actual[0].src[0] === 'index.js');
+      assert(actual[0].dest === '');
+    });
+
+    it('should error when src is non-string and list of args is passed:', function () {
+      (function () {
+        files({}, 'foo');
+      }).should.throw('expected src to be a string or array.');
+    });
+
+    it('should support dest as a string:', function () {
+      var actual = files('index.js', 'foo');
+      assert(actual[0].src[0] === 'index.js');
+      assert(actual[0].dest === 'foo');
+    });
+  });
+
   describe('files array', function () {
     it('should make dest an empty string when undefined:', function () {
       var actual = files(['index.js', '*.md', '.*']);
@@ -42,13 +63,13 @@ describe('files', function () {
     });
   });
 
-  describe('expand', function () {
+  describe('src', function () {
     it('should create a node when no `src` exists', function () {
       var actual = files({'foo': 'bar'});
       assert.deepEqual(actual, [{
         options: {},
         dest: 'foo',
-        src: []
+        src: ['bar']
       }]);
     });
 
@@ -58,6 +79,9 @@ describe('files', function () {
       assert(Array.isArray(actual[0].src));
     });
 
+  });
+
+  describe('globbing', function () {
     it('should expand `src` glob patterns:', function () {
       var actual = files({src: 'test/fixtures/*.txt'});
       assert(utils.contains(actual[0].src, 'test/fixtures/a.txt'));
@@ -68,6 +92,11 @@ describe('files', function () {
       assert(utils.contains(actual[0].src, 'test/fixtures/a.txt'));
       assert(utils.contains(actual[0].src, 'test/fixtures/b.txt'));
       assert(utils.contains(actual[0].src, 'test/fixtures/c.txt'));
+    });
+
+    it('should not expand glob patterns when `options.glob` is false', function () {
+      var actual = files({src: 'test/fixtures/*.txt', glob: false});
+      assert(utils.contains(actual[0].src, 'test/fixtures/*.txt'));
     });
   });
 
@@ -339,7 +368,7 @@ describe('expand mapping:', function () {
     });
   });
 
-  describe('options.flatten:', function () {
+  describe('options.nonull:', function () {
     it('should return the original pattern when no files are found:', function () {
       var actual = files({
         options: {nonull: true},
@@ -348,6 +377,7 @@ describe('expand mapping:', function () {
       actual[0].src.should.containEql('*.foo');
     });
   });
+
   describe('options.flatten:', function () {
     it('should flatten dest paths by joining pre-dest to src filepath:', function () {
       var expected = [{
@@ -472,6 +502,34 @@ describe('expand mapping:', function () {
   });
 
   describe('options.cwd:', function () {
+    it('should expand a leading tilde in the cwd:', function () {
+      var home = process.env[process.platform === 'win32' ? 'USERPROFILE' : 'HOME'];
+      var actual = files({
+        cwd: '~/scaffolds',
+        src: '*.txt'
+      });
+      assert(actual[0].options.cwd, path.join(home, 'scaffolds'));
+    });
+
+    it('should expand a leading @ in the cwd:', function () {
+      var home = process.env[process.platform === 'win32' ? 'USERPROFILE' : 'HOME'];
+      var actual = files({
+        cwd: '@/scaffolds',
+        src: '*.txt'
+      });
+      assert(actual[0].options.cwd, path.join(gm, 'scaffolds'));
+    });
+
+    it('should expand a leading @ in the cwd when expand is true:', function () {
+      var home = process.env[process.platform === 'win32' ? 'USERPROFILE' : 'HOME'];
+      var actual = files({
+        expand: true,
+        cwd: '@/scaffolds',
+        src: '*.txt'
+      });
+      assert(actual[0].options.cwd, path.join(gm, 'scaffolds'));
+    });
+
     it('should strip cwd from filepath before joined to dest:', function () {
       var actual = files({
         options: {
@@ -658,14 +716,21 @@ describe('expand mapping:', function () {
     it('should throw an error when the filter argument is invalid:', function () {
       (function () {
         files({
-          options: {
-            expand: true,
-            filter: 'isFil'
-          },
+          options: {expand: true, filter: 'isFil'},
           src: ['{a,b}/**/*'],
           dest: 'dest'
         });
-      }).should.throw('[options.filter] `isFil` is not a valid fs.lstat method name');
+      }).should.throw('[options.filter] `isFil` is not a valid fs.lstatSync method name');
+    });
+
+    it('should throw an error when the filter argument is invalid:', function () {
+      (function () {
+        files({
+          options: {expand: true, filter: 'isFil', statType: 'statSync'},
+          src: ['{a,b}/**/*'],
+          dest: 'dest'
+        });
+      }).should.throw('[options.filter] `isFil` is not a valid fs.statSync method name');
     });
   });
 
