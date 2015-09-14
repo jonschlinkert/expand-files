@@ -9,6 +9,7 @@
 
 var fs = require('fs');
 var path = require('path');
+var define = require('define-property');
 var utils = require('./lib/utils');
 
 /**
@@ -21,8 +22,8 @@ function Files(options) {
     return new Files(options);
   }
   this.options = this.options || {};
-  this.statCache = {};
-  this.pathCache = {};
+  define(this, 'statCache', {});
+  define(this, 'pathCache', {});
 }
 
 /**
@@ -61,7 +62,8 @@ Files.prototype.expand = function(config, context) {
   var options = utils.merge({}, this.options, config.options);
   if (options.process === true) {
     var ctx = utils.merge({}, options.parent, context || config);
-    config = utils.expand(config, ctx);
+    var fn = utils.expand(this.options);
+    config = fn(config, ctx);
   }
 
   var files = config.files;

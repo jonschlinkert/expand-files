@@ -707,7 +707,8 @@ describe('expand mapping:', function () {
             ctx.ext = path.extname(fp);
             ctx.dest = dest;
             ctx.basename = path.basename(fp);
-            return expand(pattern, ctx, {regex: /:([(\w ),]+)/});
+            var fn = expand({regex: /:([(\w ),]+)/});
+            return fn(pattern, ctx);
           }
         },
         src: ['**/*'],
