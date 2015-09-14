@@ -8,12 +8,12 @@ Expands `src` glob patterns and creates `dest` mappings:
 
 ```js
 var files = require('expand-files');
+// pass any "global" options
+config = files({cwd: 'test/fixtures'});
 
-files({
-  options: {
-    cwd: 'test/fixtures',
-    expand: true
-  },
+// expand src-dest mappings 
+config.expand({
+  options: {expand: true},
   src: '*.txt',
   dest: 'dist/'
 });
@@ -72,12 +72,13 @@ $ npm i expand-files --save
 
 ```js
 var files = require('expand-files');
+var config = files();
 
 // pass a list of arguments
-files(src, dest, options);
+config.expand(src, dest, options);
 
 // or an object
-files({
+config.expand({
   options: options,
   src: src, 
   dest: dest
@@ -91,16 +92,16 @@ By default, `src` is appended to the defined `dest`. If `flatten` is true, then 
 **Examples**
 
 ```js
-files({src: 'index.js', dest: 'dist/'});
+config.expand({src: 'index.js', dest: 'dist/'});
 //=> [ { src: [ 'index.js' ], dest: 'dist/' } ]
 
-files({src: 'index.js', dest: 'dist/', expand: true});
+config.expand({src: 'index.js', dest: 'dist/', expand: true});
 //=> [{ src: [ 'index.js' ], dest: 'dist/index.js' } ]
 ```
 
 ## Examples
 
-Supports any of the formats supported by the [files-objects](https://github.com/jonschlinkert/files-objects) library as well as any of the configurations in [examples.md](./examples.md).
+Supports any of the formats supported by the [files-objects][] library as well as any of the configurations in [examples.md](./examples.md).
 
 ## options
 
@@ -115,7 +116,7 @@ Expand src-dest mappings. Creates a `dest` filepath for each `src` filepath.
 **Example:**
 
 ```js
-files({src: 'test/fixtures/*.js', dest: 'dist/', expand: true});
+config.expand({src: 'test/fixtures/*.js', dest: 'dist/', expand: true});
 ```
 
 **results in**
@@ -139,7 +140,7 @@ Flatten destination paths. Joins the `src` basename to the defined `dest` path.
 **Example:**
 
 ```js
-files({src: 'test/fixtures/*.js', dest: 'dist/', expand: true, flatten: true});
+config.expand({src: 'test/fixtures/*.js', dest: 'dist/', expand: true, flatten: true});
 ```
 
 **results in**
@@ -163,7 +164,7 @@ The extension to use on dest files.
 **Example:**
 
 ```js
-files({src: '*.coffee', dest: 'dist/', ext: '.js'});
+config.expand({src: '*.coffee', dest: 'dist/', ext: '.js'});
 ```
 
 ### extDot
@@ -182,7 +183,7 @@ The part of the extension to use on dest files when the extension is automatical
 **Example:**
 
 ```js
-files({src: '*.js', dest: 'dist/', extDot: 'first'});
+config.expand({src: '*.js', dest: 'dist/', extDot: 'first'});
 ```
 
 ### cwd
@@ -194,7 +195,7 @@ files({src: '*.js', dest: 'dist/', extDot: 'first'});
 **Example:**
 
 ```js
-files({src: '*.js', dest: 'dist/', cwd: true});
+config.expand({src: '*.js', dest: 'dist/', cwd: true});
 ```
 
 ### rename
@@ -206,7 +207,7 @@ files({src: '*.js', dest: 'dist/', cwd: true});
 **Example:**
 
 ```js
-files({
+config.expand({
   src: '*.js', 
   dest: 'dist/', 
   rename: true
@@ -226,13 +227,13 @@ Filter by `fs.lstat` "type" or using a custom filter function.
 Filter by `fs.lstat` method name:
 
 ```js
-files({src: '**/*', dest: 'dist/', filter: 'isFile'});
+config.expand({src: '**/*', dest: 'dist/', filter: 'isFile'});
 ```
 
 Filter function:
 
 ```js
-files({
+config.expand({
   options: {
     filter: function (str) {
       return !/DS_Store/.test(str);
@@ -278,8 +279,8 @@ Either way they will be normalized onto the `options` object to ensure that [glo
 Both of the following will result in `expand` being on the `options` object.
 
 ```js
-files({src: '*.js', dest: 'dist/', options: {expand: true}});
-files({src: '*.js', dest: 'dist/', expand: true});
+config.expand({src: '*.js', dest: 'dist/', options: {expand: true}});
+config.expand({src: '*.js', dest: 'dist/', expand: true});
 ```
 
 ## Related projects
@@ -288,8 +289,8 @@ files({src: '*.js', dest: 'dist/', expand: true});
 * [expand-config](https://www.npmjs.com/package/expand-config): Expand tasks, targets and files in a declarative configuration. | [homepage](https://github.com/jonschlinkert/expand-config)
 * [expand-target](https://www.npmjs.com/package/expand-target): Expand target definitions in a declarative configuration. | [homepage](https://github.com/jonschlinkert/expand-target)
 * [expand-task](https://www.npmjs.com/package/expand-task): Expand and normalize task definitions in a declarative configuration. | [homepage](https://github.com/jonschlinkert/expand-task)
-* [files-objects](https://www.npmjs.com/package/files-objects): Expand files objects into src-dest mappings. | [homepage](https://github.com/jonschlinkert/files-objects)
 * [map-dest](https://www.npmjs.com/package/map-dest): Map the destination path for a file based on the given source path and options. | [homepage](https://github.com/jonschlinkert/map-dest)
+* [normalize-config](https://www.npmjs.com/package/normalize-config): Normalize a declarative configuration with any combination of src-dest mappings, files arrays, files objects and… [more](https://www.npmjs.com/package/normalize-config) | [homepage](https://github.com/jonschlinkert/normalize-config)
 
 ## Coverage
 
@@ -326,4 +327,4 @@ Released under the MIT license.
 
 ***
 
-_This file was generated by [verb-cli](https://github.com/assemble/verb-cli) on September 04, 2015._
+_This file was generated by [verb-cli](https://github.com/assemble/verb-cli) on September 14, 2015._
