@@ -9,229 +9,175 @@
 
 var fs = require('fs');
 var path = require('path');
-var reserved = require('./lib/reserved');
-var utils = require('./lib/utils')(require);
+var utils = require('./lib/utils');
 
 /**
  * Create an instance of `Files` to expand src-dest
  * mappings on the given `config`.
  */
 
-function Files(config, dest, options) {
+function Files(options) {
   if (!(this instanceof Files)) {
-    return new Files(config, dest, options);
+    return new Files(options);
   }
-  if (dest || options || utils.typeOf(config) !== 'object') {
-    config = this.toConfig.apply(this, arguments);
-  }
-  config.options = config.options || {};
+  this.options = this.options || {};
   this.statCache = {};
   this.pathCache = {};
-  return this.expand(config);
 }
 
 /**
- * `Files` prototype methods
+ * Normalize the given `config` with [normalize-config][]. See that
+ * library for the full range of features and options, or to create
+ * issues related to normalization.
+ *
+ * @param {Object} `config`
+ * @param {String} `dest`
+ * @param {Object} `options`
+ * @return {Object} Returns the instance.
+ * @api public
  */
 
-Files.prototype = {
-  constructor: Files,
+Files.prototype.normalize = function(/*config, dest, options*/) {
+  var config = utils.normalize.apply(this, arguments);
+  for (var key in config) {
+    this[key] = config[key];
+  }
+  return this;
+};
 
-  /**
-   * Expand glob patterns in `src`.
-   *
-   * @param {Object} `config`
-   * @return {Object}
-   */
 
-  expand: function(config) {
-    var opts = utils.pick(config, reserved.options);
-    var rest = utils.omit(config, reserved.options);
-    rest.options = utils.merge({}, opts, rest.options);
-    config = rest;
+/**
+ * Expand glob patterns in `src`.
+ *
+ * @param {Object} `config`
+ * @return {Object}
+ */
 
-    if (config.options.process === true) {
-      var ctx = utils.merge({}, config, config.options.parent);
-      config = utils.expand(config, ctx);
-    }
+Files.prototype.expand = function(config, context) {
+  if (!config.isNormalized) {
+    config = this.normalize(config);
+  }
 
-    if (!config.src) return this.normalize(config);
+  var options = utils.merge({}, this.options, config.options);
+  if (options.process === true) {
+    var ctx = utils.merge({}, options.parent, context || config);
+    config = utils.expand(config, ctx);
+  }
 
-    opts = config.options;
-    if (opts.cwd) {
-      opts.cwd = resolve(opts.cwd);
-    }
-    if (opts.srcBase) {
-      opts.cwd = path.join(opts.cwd, opts.srcBase);
-    }
+  var files = config.files;
+  var len = files.length, i = -1;
 
-    // store the original `src`
-    var orig = config.src;
-    config.src = utils.flatten(utils.arrayify(config.src)).filter(Boolean);
+  if (options.glob === false) {
+    return this;
+  }
 
-    // expand glob patterns
-    if (opts.glob !== false && utils.hasGlob(orig)) {
-      config.src = utils.glob.sync(config.src, opts);
-    }
+  while (++i < len) {
+    var file = files[i];
+    var opts = utils.merge({}, options, file.options);
+    file.options = resolveCwd(opts);
 
-    if (!config.src.length) {
-      return utils.arrayify(config);
-    }
+    file.src = utils.glob.sync(file.src, opts);
+    if (!file.src.length) continue;
+
+    // run custom filter function on src files, if defined
+    file.src = filterSrc(file.src, this.filter(opts));
 
     if (opts.expand === true) {
-      return this.expandMapping(config);
+      config.files = this.expandMapping(file, opts);
+      break;
     }
 
-    var filter = this.filter(opts);
-    config.src = config.src.filter(function (fp) {
-      return filter(fp);
-    });
+    file.dest = utils.mapDest.rename(file.dest, file.src, opts);
 
-    // use rename function to modify dest path
-    config.dest = utils.mapDest.rename(config.dest, config.src, opts);
-
-    if (opts.cwd) {
-      config.src = config.src.map(function (fp) {
-        return path.join(opts.cwd, fp);
-      });
+    if (opts && opts.cwd) {
+      file.src = resolveSrc(file.src, opts);
     }
 
     // if `transform` is defined, use it to modify the resulting config
     if (typeof opts.transform === 'function') {
-      config = opts.transform(config);
+      file = opts.transform(file);
     }
-    return utils.arrayify(config);
-  },
-
-  /**
-   * Normalize the configuration passed to
-   * the constructor.
-   *
-   * @param {Object} `config`
-   * @return {Object}
-   */
-
-  normalize: function (config) {
-    var res = utils.toMapping(config);
-    var files = [];
-
-    var len = res.files.length, i = -1;
-
-    while (++i < len) {
-      var obj = res.files[i];
-      obj = this.expand(obj);
-      delete obj.options;
-      files = files.concat(obj);
-    }
-    return files;
-  },
-
-  /**
-   * Expand `src-dest` mappings.
-   *
-   * @param {Object} `config`
-   * @return {Object}
-   */
-
-  expandMapping: function (config) {
-    var len = config.src.length, i = -1;
-    var filter = this.filter(config.options);
-    var files = [];
-
-    while (++i < len) {
-      var fp = config.src[i];
-      if (!filter(fp)) continue;
-
-      // `mapDest` always returns an array, since it can handle
-      // `src` arrays, be we will always only pass one src file
-      var result = utils.mapDest(fp, config.dest, config.options)[0];
-      var dest = utils.unixify(result.dest);
-      var src = utils.unixify(result.src);
-
-      if (this.pathCache[dest]) {
-        this.pathCache[dest].src.push(src);
-      } else {
-        result.src = [src];
-        var res = result;
-
-        // if `transform` is defined, use it to modify the result
-        if (typeof config.options.transform === 'function') {
-          res = config.options.transform(res, config);
-        }
-
-        files.push(res);
-        this.pathCache[dest] = this.pathCache[dest] || result;
-      }
-    }
-    return files;
-  },
-
-  /**
-   * Normalize arguments when passed as a list on
-   * the constructor.
-   *
-   * ```js
-   * files(src, dest, options);
-   * ```
-   * @param {String|Array} `src`
-   * @param {String} `dest`
-   * @param {Object} `options`
-   * @return {object}
-   */
-
-  toConfig: function (src, dest, options) {
-    if (typeof src !== 'string' && !Array.isArray(src)) {
-      throw new TypeError('expected src to be a string or array.');
-    }
-    var config = {};
-    if (typeof dest !== 'string') {
-      options = dest;
-      dest = '';
-    }
-    config.options = options || {};
-    config.src = src;
-    config.dest = dest || '';
-    return config;
-  },
-
-  /**
-   * Default filter function.
-   *
-   * @param {String} `fp`
-   * @param {Object} `opts`
-   * @return {Boolean} Returns `true` if a file matches.
-   */
-
-  filter: function(opts) {
-    var filter = opts.filter;
-    var statType = opts.statType || 'lstatSync';
-    var self = this;
-
-    return function (fp) {
-      var isMatch = true;
-
-      // if `options.filter` is a function, use it to
-      // conditionally exclude a file from the result set
-      if (typeof filter === 'function') {
-        isMatch = filter(fp);
-
-      // if `options.filter` is a string and matches a `fs.lstat`
-      // method, call the `fs.lstat` method on the file
-      } else if (typeof filter === 'string') {
-        validateMethod(filter, statType);
-
-        try {
-          var stat = self.statCache[fp] || (self.statCache[fp] = fs[statType](fp));
-          isMatch = stat[filter]();
-        } catch (err) {
-          isMatch = false;
-        }
-      } else {
-        isMatch = true;
-      }
-      return isMatch;
-    };
   }
+  return this;
+};
+
+/**
+ * Expand `src-dest` mappings.
+ *
+ * @param {Object} `config`
+ * @param {Object} `options`
+ * @return {Object}
+ */
+
+Files.prototype.expandMapping = function(config, options) {
+  var opts = utils.merge({}, options, config.options);
+  var len = config.src.length, i = -1;
+  var filter = this.filter(opts);
+  var files = [];
+
+  while (++i < len) {
+    var fp = config.src[i];
+    if (!filter(fp)) continue;
+
+    var result = utils.mapDest(fp, config.dest, opts)[0];
+    var dest = utils.unixify(result.dest);
+    var src = utils.unixify(result.src);
+
+    if (this.pathCache[dest]) {
+      this.pathCache[dest].src.push(src);
+    } else {
+      result.src = [src];
+      var res = result;
+
+      // if `transform` is defined, use it to modify the result
+      if (typeof opts.transform === 'function') {
+        res = opts.transform(res, config);
+      }
+
+      files.push(res);
+      this.pathCache[dest] = this.pathCache[dest] || result;
+    }
+  }
+  return files;
+};
+
+/**
+ * Default filter function.
+ *
+ * @param {String} `fp`
+ * @param {Object} `opts`
+ * @return {Boolean} Returns `true` if a file matches.
+ */
+
+Files.prototype.filter = function(opts) {
+  var filter = opts.filter;
+  var statType = opts.statType || 'lstatSync';
+  var self = this;
+
+  return function (fp) {
+    var isMatch = true;
+
+    // if `options.filter` is a function, use it to
+    // conditionally exclude a file from the result set
+    if (typeof filter === 'function') {
+      isMatch = filter(fp);
+
+    // if `options.filter` is a string and matches a `fs.lstat`
+    // method, call the `fs.lstat` method on the file
+    } else if (typeof filter === 'string') {
+      validateMethod(filter, statType);
+
+      try {
+        var stat = self.statCache[fp] || (self.statCache[fp] = fs[statType](fp));
+        isMatch = stat[filter]();
+      } catch (err) {
+        isMatch = false;
+      }
+    } else {
+      isMatch = true;
+    }
+    return isMatch;
+  };
 };
 
 /**
@@ -252,6 +198,29 @@ function resolve(dir) {
   return dir;
 }
 
+function resolveCwd(opts) {
+  if (opts.cwd) {
+    opts.cwd = resolve(opts.cwd);
+  }
+  if (opts.srcBase) {
+    opts.cwd = path.join(opts.cwd, opts.srcBase);
+  }
+  return opts;
+}
+
+function resolveSrc(src, opts) {
+  if (!opts.cwd) return src;
+  return src.map(function (fp) {
+    return path.join(opts.cwd, fp);
+  });
+}
+
+function filterSrc(src, fn) {
+  return src.filter(function (fp) {
+    return fn(fp);
+  });
+}
+
 /**
  * When the `filter` option is a string, validate
  * that the it's a valid `fs.lstat` method name.
@@ -270,9 +239,7 @@ function validateMethod(method, type) {
 }
 
 /**
- * Expose `Files`. For now file expansion is done
- * in the constructor, but I might expose the individual
- * methods if it's useful.
+ * Expose `Files`.
  */
 
 module.exports = Files;
