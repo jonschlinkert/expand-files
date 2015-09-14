@@ -1,7 +1,7 @@
 {
   "name": "expand-files",
   "description": "Expand glob patterns in a declarative configuration into src-dest mappings.",
-  "version": "0.2.6",
+  "version": "0.3.0",
   "homepage": "https://github.com/jonschlinkert/expand-files",
   "author": "Jon Schlinkert (https://github.com/jonschlinkert)",
   "repository": "jonschlinkert/expand-files",
@@ -21,19 +21,14 @@
     "test": "mocha"
   },
   "dependencies": {
-    "arr-flatten": "^1.0.1",
     "expand": "^0.1.4",
     "expand-tilde": "^1.2.0",
-    "files-objects": "^0.1.3",
     "global-modules": "^0.2.0",
     "globby": "^3.0.1",
-    "has-glob": "^0.1.0",
-    "kind-of": "^2.0.1",
     "lazy-cache": "^0.2.3",
-    "map-dest": "^0.1.3",
+    "map-dest": "^0.1.4",
     "mixin-deep": "^1.1.3",
-    "object.omit": "^2.0.0",
-    "object.pick": "^1.1.1"
+    "normalize-config": "^0.4.0"
   },
   "devDependencies": {
     "for-in": "^0.1.4",
@@ -43,7 +38,6 @@
     "gulp-mocha": "^2.1.3",
     "jshint-stylish": "^2.0.1",
     "mocha": "*",
-    "parse-filepath": "^0.6.3",
     "should": "*",
     "stringify-object": "^2.3.0",
     "to-clipboard": "^0.1.0"
@@ -67,7 +61,7 @@
   "verb": {
     "related": {
       "list": [
-        "files-objects",
+        "normalize-config",
         "expand",
         "expand-config",
         "expand-files",
