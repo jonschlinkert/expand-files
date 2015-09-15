@@ -21,7 +21,7 @@ function Files(options) {
   if (!(this instanceof Files)) {
     return new Files(options);
   }
-  this.options = this.options || {};
+  this.options = options || {};
   define(this, 'statCache', {});
   define(this, 'pathCache', {});
 }
