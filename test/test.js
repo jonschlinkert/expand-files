@@ -104,6 +104,12 @@ describe('files', function () {
       assert(utils.contains(config.files[0].src, 'test/fixtures/a.txt'));
     });
 
+    it('should include globParent property:', function () {
+      var config = new Files();
+      config.expand({src: 'test/fixtures/*.txt'});
+      assert(config.files[0].options.globParent, 'test/fixtures');
+    });
+
     it('should use a `cwd` to expand `src` glob patterns:', function () {
       var config = new Files();
       config.expand({src: '*.txt', options: {cwd: 'test/fixtures'}});
@@ -112,10 +118,23 @@ describe('files', function () {
       assert(utils.contains(config.files[0].src, 'test/fixtures/c.txt'));
     });
 
+    it('should include globParent from the correct `cwd` when provided:', function () {
+      var config = new Files();
+      config.expand({src: '*.txt', options: {cwd: 'test/fixtures'}});
+      assert(config.files[0].options.globParent, '.');
+    });
+
     it('should not expand glob patterns when `options.glob` is false', function () {
       var config = new Files();
       config.expand({src: 'test/fixtures/*.txt', glob: false});
       assert(utils.contains(config.files[0].src, 'test/fixtures/*.txt'));
+    });
+
+    it('should not have a globParent when a non-glob pattern is specified:', function () {
+      var config = new Files();
+      config.expand({src: 'test/fixtures/a.txt'});
+      assert(utils.contains(config.files[0].src, 'test/fixtures/a.txt'));
+      assert(typeof config.files[0].options.globParent === 'undefined');
     });
   });
 

@@ -78,6 +78,7 @@ Files.prototype.expand = function(config, context) {
     var opts = utils.merge({}, options, file.options);
     file.options = resolveCwd(opts);
 
+    opts.globParent = globParent(file.src);
     file.src = utils.glob.sync(file.src, opts);
     if (!file.src.length) continue;
 
@@ -221,6 +222,13 @@ function filterSrc(src, fn) {
   return src.filter(function (fp) {
     return fn(fp);
   });
+}
+
+function globParent(src) {
+  var pattern = Array.isArray(src) ? src[0] : src;
+  if (utils.isGlob(pattern)) {
+    return utils.parent(pattern);
+  }
 }
 
 /**
