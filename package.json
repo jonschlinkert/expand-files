@@ -11,7 +11,7 @@
   "license": "MIT",
   "files": [
     "index.js",
-    "lib/"
+    "lib"
   ],
   "main": "index.js",
   "engines": {
@@ -21,17 +21,20 @@
     "test": "mocha"
   },
   "dependencies": {
+    "base-methods": "^0.4.0",
+    "base-plugins": "^0.4.1",
     "define-property": "^0.2.5",
-    "expand": "^0.2.0",
-    "expand-tilde": "^1.2.0",
-    "glob-parent": "^1.2.0",
+    "expand": "^0.3.2",
+    "glob-parent": "^2.0.0",
     "global-modules": "^0.2.0",
-    "globby": "^3.0.1",
-    "is-glob": "^2.0.0",
-    "lazy-cache": "^0.2.3",
-    "map-dest": "^0.1.4",
+    "lazy-cache": "^0.2.4",
+    "map-dest": "^0.1.7",
+    "matched": "^0.3.2",
     "mixin-deep": "^1.1.3",
-    "normalize-config": "^0.4.0"
+    "normalize-config": "^0.4.1",
+    "normalize-path": "^2.0.0",
+    "object.omit": "^2.0.0",
+    "resolve-dir": "^0.1.0"
   },
   "devDependencies": {
     "for-in": "^0.1.4",
@@ -51,9 +54,9 @@
     "dest",
     "destination",
     "expand",
+    "files",
     "files array",
     "files object",
-    "files",
     "normalize",
     "options",
     "src",
