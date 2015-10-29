@@ -8,8 +8,8 @@
 'use strict';
 
 var fs = require('fs');
-var path = require('path');
-var define = require('define-property');
+var Base = require('base-methods');
+var plugins = require('base-plugins');
 var utils = require('./lib/utils');
 
 /**
@@ -17,14 +17,25 @@ var utils = require('./lib/utils');
  * mappings on the given `config`.
  */
 
-function Files(options) {
+function Files(config) {
   if (!(this instanceof Files)) {
-    return new Files(options);
+    return new Files(config);
   }
-  this.options = options || {};
-  define(this, 'statCache', {});
-  define(this, 'pathCache', {});
+
+  this.options = config || {};
+  Base.call(this);
+
+  this.use(plugins());
+  utils.define(this, 'statCache', {});
+  utils.define(this, 'pathCache', {});
+  this.cache = {};
 }
+
+/**
+ * Inherit Files
+ */
+
+Base.extend(Files);
 
 /**
  * Normalize the given `config` with [normalize-config][]. See that
@@ -39,13 +50,11 @@ function Files(options) {
  */
 
 Files.prototype.normalize = function(/*config, dest, options*/) {
-  var config = utils.normalize.apply(this, arguments);
-  for (var key in config) {
-    this[key] = config[key];
-  }
+  this.cache = utils.normalize.apply(this, arguments);
+  utils.is(this.cache, 'Files');
+  this.run(this.cache);
   return this;
 };
-
 
 /**
  * Expand glob patterns in `src`.
@@ -54,52 +63,58 @@ Files.prototype.normalize = function(/*config, dest, options*/) {
  * @return {Object}
  */
 
-Files.prototype.expand = function(config, context) {
+Files.prototype.expand = function(config) {
   if (!config.isNormalized) {
-    config = this.normalize(config);
+    this.normalize(config, this.options);
+  } else {
+    this.cache = config;
   }
 
-  var options = utils.merge({}, this.options, config.options);
-  if (options.process === true) {
-    var ctx = utils.merge({}, options.parent, context || config);
-    var fn = utils.expand(this.options);
-    config = fn(config, ctx);
-  }
+  this.emit('expand', this.cache);
 
-  var files = config.files;
+  var options = utils.merge({}, this.options, this.cache.options);
+  var glob = utils.glob;
+  var files = this.cache.files;
   var len = files.length, i = -1;
 
   if (options.glob === false) {
     return this;
   }
 
+  if (typeof options.glob === 'function') {
+    glob = options.glob;
+  }
+
   while (++i < len) {
     var file = files[i];
-    var opts = utils.merge({}, options, file.options);
-    file.options = resolveCwd(opts);
 
-    opts.globParent = globParent(file.src);
-    file.src = utils.glob.sync(file.src, opts);
-    if (!file.src.length) continue;
+    utils.is(file, 'node');
+    this.cache.run(file);
+
+    var opts = utils.merge({}, options, file.options);
+    file.options = utils.resolveCwd(opts);
+
+    opts.base = utils.base(file.src, opts);
+    file.src = glob.sync(file.src, opts);
+    if (!file.src.length) {
+      this.emit('node', file);
+      continue;
+    }
 
     // run custom filter function on src files, if defined
-    file.src = filterSrc(file.src, this.filter(opts));
+    file.src = utils.filterSrc(file.src, this.filter(opts));
 
     if (opts.expand === true) {
-      config.files = this.expandMapping(file, opts);
+      this.cache.files = this.expandMapping(file, opts);
+      this.emit('node', file, this.cache.files);
       break;
     }
 
     file.dest = utils.mapDest.rename(file.dest, file.src, opts);
-
     if (opts && opts.cwd) {
-      file.src = resolveSrc(file.src, opts);
+      file.src = utils.resolveSrc(file.src, opts);
     }
-
-    // if `transform` is defined, use it to modify the resulting config
-    if (typeof opts.transform === 'function') {
-      file = opts.transform(file);
-    }
+    this.emit('node', file);
   }
   return this;
 };
@@ -112,33 +127,32 @@ Files.prototype.expand = function(config, context) {
  * @return {Object}
  */
 
-Files.prototype.expandMapping = function(config, options) {
-  var opts = utils.merge({}, options, config.options);
-  var len = config.src.length, i = -1;
+Files.prototype.expandMapping = function(file, options) {
+  var opts = utils.merge({}, options, file.options);
   var filter = this.filter(opts);
+  var rest = utils.omit(file, ['src', 'dest', 'files']);
+  var len = file.src.length, i = -1;
   var files = [];
 
   while (++i < len) {
-    var fp = config.src[i];
+    var fp = file.src[i];
     if (!filter(fp)) continue;
 
-    var result = utils.mapDest(fp, config.dest, opts)[0];
-    var dest = utils.unixify(result.dest);
-    var src = utils.unixify(result.src);
+    var resultFile = utils.mapDest(fp, file.dest, opts)[0];
+    resultFile = utils.merge({}, rest, resultFile);
+
+    utils.is(resultFile, 'node');
+    this.cache.run(resultFile);
+
+    var dest = utils.unixify(resultFile.dest);
+    var src = utils.unixify(resultFile.src);
 
     if (this.pathCache[dest]) {
       this.pathCache[dest].src.push(src);
     } else {
-      result.src = [src];
-      var res = result;
-
-      // if `transform` is defined, use it to modify the result
-      if (typeof opts.transform === 'function') {
-        res = opts.transform(res, config);
-      }
-
-      files.push(res);
-      this.pathCache[dest] = this.pathCache[dest] || result;
+      resultFile.src = [src];
+      files.push(resultFile);
+      this.pathCache[dest] = this.pathCache[dest] || resultFile;
     }
   }
   return files;
@@ -182,54 +196,6 @@ Files.prototype.filter = function(opts) {
     return isMatch;
   };
 };
-
-/**
- * Resolve paths with special leading characters, in the
- * spirit of bash.
- *
- * @param {String} `dir`
- * @return {String}
- */
-
-function resolve(dir) {
-  if (dir.charAt(0) === '~') {
-    dir = utils.tilde(dir);
-  }
-  if (dir.charAt(0) === '@') {
-    dir = path.join(utils.gm, dir.slice(1));
-  }
-  return dir;
-}
-
-function resolveCwd(opts) {
-  if (opts.cwd) {
-    opts.cwd = resolve(opts.cwd);
-  }
-  if (opts.srcBase) {
-    opts.cwd = path.join(opts.cwd, opts.srcBase);
-  }
-  return opts;
-}
-
-function resolveSrc(src, opts) {
-  if (!opts.cwd) return src;
-  return src.map(function (fp) {
-    return path.join(opts.cwd, fp);
-  });
-}
-
-function filterSrc(src, fn) {
-  return src.filter(function (fp) {
-    return fn(fp);
-  });
-}
-
-function globParent(src) {
-  var pattern = Array.isArray(src) ? src[0] : src;
-  if (utils.isGlob(pattern)) {
-    return utils.parent(pattern);
-  }
-}
 
 /**
  * When the `filter` option is a string, validate
