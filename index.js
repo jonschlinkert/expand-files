@@ -24,6 +24,7 @@ function Files(config) {
 
   this.options = config || {};
   Base.call(this);
+  this.is('ExpandFiles');
 
   this.use(plugins());
   utils.define(this, 'statCache', {});
