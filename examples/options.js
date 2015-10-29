@@ -1,4 +1,10 @@
-var files = require('../');
+var Files = require('../');
+
+function files(options) {
+  var config = new Files();
+  config.expand(options);
+  return config.cache;
+}
 
 console.log(files({
   src: 'lib/*.js',
