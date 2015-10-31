@@ -26,10 +26,11 @@ function Files(config) {
   Base.call(this);
   this.is('ExpandFiles');
 
-  this.use(plugins());
   utils.define(this, 'statCache', {});
   utils.define(this, 'pathCache', {});
   this.cache = {};
+
+  this.use(plugins());
 }
 
 /**
@@ -89,16 +90,18 @@ Files.prototype.expand = function(config) {
   while (++i < len) {
     var file = files[i];
 
-    utils.is(file, 'node');
-    this.cache.run(file);
-
     var opts = utils.merge({}, options, file.options);
-    file.options = utils.resolveCwd(opts);
+    runStage.call(this, this.cache, file, 'rawNode', opts);
 
+    utils.is(file, 'node');
+
+    opts = utils.merge({}, options, file.options);
+    file.options = utils.resolveCwd(opts);
     opts.base = utils.base(file.src, opts);
     file.src = glob.sync(file.src, opts);
+
     if (!file.src.length) {
-      this.emit('node', file);
+      runStage.call(this, this.cache, file, 'node', opts);
       continue;
     }
 
@@ -107,7 +110,6 @@ Files.prototype.expand = function(config) {
 
     if (opts.expand === true) {
       this.cache.files = this.expandMapping(file, opts);
-      this.emit('node', file, this.cache.files);
       break;
     }
 
@@ -115,7 +117,8 @@ Files.prototype.expand = function(config) {
     if (opts && opts.cwd) {
       file.src = utils.resolveSrc(file.src, opts);
     }
-    this.emit('node', file);
+
+    runStage.call(this, this.cache, file, 'node', opts);
   }
   return this;
 };
@@ -143,7 +146,7 @@ Files.prototype.expandMapping = function(file, options) {
     resultFile = utils.merge({}, rest, resultFile);
 
     utils.is(resultFile, 'node');
-    this.cache.run(resultFile);
+    this.emit('node', resultFile);
 
     var dest = utils.unixify(resultFile.dest);
     var src = utils.unixify(resultFile.src);
@@ -155,6 +158,8 @@ Files.prototype.expandMapping = function(file, options) {
       files.push(resultFile);
       this.pathCache[dest] = this.pathCache[dest] || resultFile;
     }
+
+    this.cache.run(this.pathCache[dest]);
   }
   return files;
 };
@@ -213,6 +218,13 @@ function validateMethod(method, type) {
       + '` is not a valid fs.' + type + ' method name';
     throw new Error(msg);
   }
+}
+
+function runStage(app, config, name, opts) {
+  utils.is(config, name);
+  this.emit(name, config);
+  app.run(config, opts);
+  delete config['is' + config._name];
 }
 
 /**

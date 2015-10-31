@@ -257,14 +257,14 @@ describe('files', function () {
     });
   });
 
-  describe('options.process:', function () {
-    it('should process templates in config values:', function () {
+  describe('plugins:', function () {
+    it('should use a plugin on a node:', function () {
       var config = new Files();
       config.use(function(files) {
         var render = expand(this.options);
 
         return function fn(node) {
-          if (!node.isNode) return fn;
+          if (!node.isRawNode) return fn;
           var opts = utils.merge({}, files.cache, this.options);
           render(this, opts);
         };
@@ -279,39 +279,33 @@ describe('files', function () {
         dest: '<%= options.cwd %>'
       });
 
-      // console.log(config.cache.files[0])
       assert(config.cache.files[0].src.length > 0);
       assert(config.cache.files[0].options.cwd === 'test/fixtures');
     });
 
-    it('should process templates with `options.parent` values:', function () {
+    it('should update files mappings with a plugin:', function () {
+      var File = require('vinyl');
       var config = new Files();
-
-      config.use(function(files) {
-        var render = expand(this.options);
+      config.use(function(app) {
+        app.array = [];
 
         return function fn(node) {
           if (!node.isNode) return fn;
-          var opts = utils.merge({}, files.cache, this.options);
-          opts = utils.merge({}, opts, this.options.parent);
-          render(this, opts);
+          node.path = node.src[0];
+          var file = new File(node);
+          file.dest = node.dest;
+          file.options = node.options;
+          app.array.push(file);
         };
       });
 
       config.expand({
-        options: {
-          process: true,
-          cwd: '<%= foo %>',
-          parent: {
-            foo: 'test/fixtures/parent'
-          }
-        },
-        bar: '*.js',
-        src: '<%= bar %>'
+        expand: true,
+        src: 'examples/*.js',
+        dest: 'foo'
       });
 
-      assert(config.cache.files[0].src.length > 0);
-      assert(config.cache.files[0].options.cwd === 'test/fixtures/parent');
+      assert(config.array.length > 1);
     });
   });
 
@@ -850,7 +844,7 @@ describe('expand mapping:', function () {
     it('should modify the result with a custom transform function', function () {
        var config = new Files();
        config.use(function fn(node) {
-        if (!node.isNode) return fn;
+        if (!node.isRawNode) return fn;
         node.pipeline = function() {};
         return node;
        });
@@ -896,9 +890,11 @@ describe('events', function () {
     var i = 0;
     config.on('node', function (node) {
       assert(node);
-      done();
+      i++;
     });
     config.expand({src: '*.js'});
+    assert(i > 0);
+    done();
   });
 
   it('should emit an event for `node` when expand is true:', function (done) {
@@ -906,8 +902,10 @@ describe('events', function () {
     var i = 0;
     config.on('node', function (node) {
       assert(node);
-      done();
+      i++;
     });
     config.expand({src: '*.js', expand: true});
+    assert(i > 0);
+    done();
   });
 });

@@ -45,6 +45,7 @@ describe('files', function () {
     it('should create a node when no `src` exists', function () {
       config.normalize({'foo': 'bar'});
       assert.deepEqual(config.cache.files, [{
+        options: {cwd: ''},
         dest: 'foo',
         src: ['bar']
       }]);
