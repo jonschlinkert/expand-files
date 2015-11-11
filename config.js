@@ -1,5 +1,6 @@
 'use strict';
 
+var path = require('path');
 var omit = require('object.omit');
 var define = require('define-property');
 var normalize = require('normalize-config');
@@ -76,7 +77,7 @@ function RawNode(raw, config) {
 
 function createNode(src, raw, files) {
   var node = new Node(src, raw);
-  if (node.src) {
+  if (node.src || node.path) {
     files.push(node);
   }
 }
@@ -93,8 +94,19 @@ function filter(config, options) {
 
 }
 
-function mapDest(file, config) {
-  return file;
+function mapDest(dest, src, options) {
+  if (!options.expand) return dest;
+
+  if (typeof options.rename === 'function') {
+    return options.rename(dest, src, options);
+  }
+
+  if (options.base) {
+    dest = path.join(dest, path.relative(options.base, src));
+  } else {
+    dest = path.join(dest, path.basename(src));
+  }
+  return dest;
 }
 
 function arrayify(val) {

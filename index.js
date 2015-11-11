@@ -8,6 +8,7 @@
 'use strict';
 
 var fs = require('fs');
+var path = require('path');
 var Base = require('base-methods');
 var plugins = require('base-plugins');
 var utils = require('./lib/utils');
@@ -17,20 +18,18 @@ var utils = require('./lib/utils');
  * mappings on the given `config`.
  */
 
-function Files(config) {
+function Files(options) {
   if (!(this instanceof Files)) {
-    return new Files(config);
+    return new Files(options);
   }
 
-  this.options = config || {};
   Base.call(this);
+  this.options = options || {};
   this.is('ExpandFiles');
 
   utils.define(this, 'statCache', {});
   utils.define(this, 'pathCache', {});
-  this.cache = {};
-
-  this.use(plugins());
+  utils.define(this, 'cache', {});
 }
 
 /**
@@ -54,6 +53,7 @@ Base.extend(Files);
 Files.prototype.normalize = function(/*config, dest, options*/) {
   this.cache = utils.normalize.apply(this, arguments);
   utils.is(this.cache, 'Files');
+  // this.files = this.cache.files;
   this.run(this.cache);
   return this;
 };
@@ -65,7 +65,9 @@ Files.prototype.normalize = function(/*config, dest, options*/) {
  * @return {Object}
  */
 
-Files.prototype.expand = function(config) {
+Files.prototype.expand = function(config, options) {
+  config = config || {};
+
   if (!config.isNormalized) {
     this.normalize(config, this.options);
   } else {
@@ -74,14 +76,10 @@ Files.prototype.expand = function(config) {
 
   this.emit('expand', this.cache);
 
-  var options = utils.merge({}, this.options, this.cache.options);
-  var glob = utils.glob;
+  var options = utils.merge({}, this.options, this.cache.options, options);
+  var glob = utils.glob.sync;
   var files = this.cache.files;
   var len = files.length, i = -1;
-
-  if (options.glob === false) {
-    return this;
-  }
 
   if (typeof options.glob === 'function') {
     glob = options.glob;
@@ -92,13 +90,20 @@ Files.prototype.expand = function(config) {
 
     var opts = utils.merge({}, options, file.options);
     runStage.call(this, this.cache, file, 'rawNode', opts);
-
     utils.is(file, 'node');
 
     opts = utils.merge({}, options, file.options);
-    file.options = utils.resolveCwd(opts);
+    opts.cwd = utils.resolveCwd(opts);
     opts.base = utils.base(file.src, opts);
-    file.src = glob.sync(file.src, opts);
+    if (opts.cwd === opts.srcBase) {
+      opts.srcBase = '';
+    }
+
+    file.options = opts;
+
+    if (opts.glob !== false) {
+      file.src = glob(file.src, opts);
+    }
 
     if (!file.src.length) {
       runStage.call(this, this.cache, file, 'node', opts);
@@ -107,7 +112,6 @@ Files.prototype.expand = function(config) {
 
     // run custom filter function on src files, if defined
     file.src = utils.filterSrc(file.src, this.filter(opts));
-
     if (opts.expand === true) {
       this.cache.files = this.expandMapping(file, opts);
       break;
@@ -117,9 +121,10 @@ Files.prototype.expand = function(config) {
     if (opts && opts.cwd) {
       file.src = utils.resolveSrc(file.src, opts);
     }
-
     runStage.call(this, this.cache, file, 'node', opts);
   }
+
+  this.files = this.cache.files;
   return this;
 };
 
@@ -159,7 +164,7 @@ Files.prototype.expandMapping = function(file, options) {
       this.pathCache[dest] = this.pathCache[dest] || resultFile;
     }
 
-    this.cache.run(this.pathCache[dest]);
+    this.run(this.pathCache[dest]);
   }
   return files;
 };
@@ -177,7 +182,7 @@ Files.prototype.filter = function(opts) {
   var statType = opts.statType || 'lstatSync';
   var self = this;
 
-  return function (fp) {
+  return function(fp) {
     var isMatch = true;
 
     // if `options.filter` is a function, use it to
@@ -223,12 +228,22 @@ function validateMethod(method, type) {
 function runStage(app, config, name, opts) {
   utils.is(config, name);
   this.emit(name, config);
-  app.run(config, opts);
+  this.run(config, opts);
   delete config['is' + config._name];
 }
+
+/**
+ * Expose an instance of expand-files
+ */
+
+module.exports = function(obj, options) {
+  var config = new Files(options);
+  config.expand(obj);
+  return config.files;
+};
 
 /**
  * Expose `Files`.
  */
 
-module.exports = Files;
+module.exports.Files = Files;
