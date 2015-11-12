@@ -48,7 +48,6 @@ function expandMapping(config, options) {
     }
     res.push.apply(res, node.files);
   }
-
   config.files = res;
   return config;
 }
@@ -125,7 +124,7 @@ function mapDest(dest, src, node) {
   var fp = src;
   if (fp && typeof fp === 'string') {
     fp = !utils.hasGlob(fp) ? fp : '';
-    var cwd = path.resolve(opts.cwd);
+    var cwd = path.resolve(opts.cwd || '');
     fp = path.join(cwd, fp);
     fp = utils.relative(cwd, fp);
   } else {
@@ -222,7 +221,7 @@ function resolveArray(files, opts) {
   if (!opts.mapDest) return files;
 
   return files.map(function(fp) {
-    return path.join(opts.cwd, fp);
+    return path.join(opts.cwd || '', fp);
   });
 }
 
