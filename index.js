@@ -62,9 +62,10 @@ function RawNode(raw, config) {
   var opts = utils.extend({}, raw.options);
   var filter = filterFiles(opts);
 
-  var srcFiles = opts.glob !== false
-    ? utils.glob.sync(raw.src, opts)
-    : raw.src;
+  var srcFiles = raw.src;
+  if (opts.glob !== false && utils.hasGlob(raw.src)) {
+    srcFiles = utils.glob.sync(raw.src, opts);
+  }
 
   srcFiles = srcFiles.filter(filter);
 
@@ -123,7 +124,7 @@ function mapDest(dest, src, node) {
 
   var fp = src;
   if (fp && typeof fp === 'string') {
-    fp = !utils.isGlob(fp) ? fp : '';
+    fp = !utils.hasGlob(fp) ? fp : '';
     var cwd = path.resolve(opts.cwd);
     fp = path.join(cwd, fp);
     fp = utils.relative(cwd, fp);
@@ -230,6 +231,7 @@ function arrayify(val) {
 }
 
 function run(parent, key, child) {
+  utils.define(child, '_name', key);
   utils.define(child, 'parent', parent);
   utils.define(child, 'orig', utils.extend({}, child));
   child[key] = true;
