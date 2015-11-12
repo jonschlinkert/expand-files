@@ -8,7 +8,7 @@ function ExpandFiles(options) {
   if (!(this instanceof ExpandFiles)) {
     return new ExpandFiles(options);
   }
-  this.ExpandFiles = true;
+  utils.define(this, 'ExpandFiles', true);
   use(this);
   this.options = options || {};
 }
