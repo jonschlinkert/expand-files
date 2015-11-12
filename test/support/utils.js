@@ -5,7 +5,7 @@ var forIn = require('for-in');
 var utils = module.exports;
 
 function forOwn(o, fn, thisArg) {
-  forIn(o, function (val, key) {
+  forIn(o, function(val, key) {
     if (o.hasOwnProperty(key)) {
       return fn.call(thisArg, o[key], key, o);
     }
@@ -14,7 +14,7 @@ function forOwn(o, fn, thisArg) {
 
 function some(o, cb, thisArg) {
   var res = false;
-  forOwn(o, function (val, key) {
+  forOwn(o, function(val, key) {
     if (cb(val, key, o)) {
       res = true;
       return false;
@@ -24,7 +24,7 @@ function some(o, cb, thisArg) {
 }
 
 function equals(a) {
-  return function (b) {
+  return function(b) {
     return a === b;
   };
 }

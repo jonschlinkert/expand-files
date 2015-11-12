@@ -1,173 +1,204 @@
-/*!
- * expand-files <https://github.com/jonschlinkert/expand-files>
- *
- * Copyright (c) 2015, Jon Schlinkert.
- * Licensed under the MIT License.
- */
-
 'use strict';
 
-var fs = require('fs');
 var path = require('path');
-var Base = require('base-methods');
-var plugins = require('base-plugins');
 var utils = require('./lib/utils');
+var use = require('use');
+
+function ExpandFiles(options) {
+  if (!(this instanceof ExpandFiles)) {
+    return new ExpandFiles(options);
+  }
+  this.ExpandFiles = true;
+  use(this);
+  this.options = options || {};
+}
+
+ExpandFiles.prototype.expand = function(src, dest, options) {
+  var config = utils.normalize.apply(this, arguments);
+  run(this, 'normalized', config);
+
+  config = expandMapping(config, options);
+  run(this, 'expanded', config);
+
+  for (var key in config) {
+    this[key] = config[key];
+  }
+  return this;
+};
 
 /**
- * Create an instance of `Files` to expand src-dest
- * mappings on the given `config`.
+ * iterate over a files array and expand src-dest mappings
+ *
+ * ```js
+ * { files: [ { src: [ '*.js' ], dest: 'dist/' } ] }
+ * ```
+ * @param {Object} `config`
+ * @param {Object} `options`
+ * @return {Object}
  */
 
-function Files(options) {
-  if (!(this instanceof Files)) {
-    return new Files(options);
+function expandMapping(config, options) {
+  var len = config.files.length, i = -1;
+  var res = [];
+
+  while (++i < len) {
+    var node = new RawNode(config.files[i], config);
+    if (!node.files.length) {
+      continue;
+    }
+    res.push.apply(res, node.files);
   }
 
-  Base.call(this);
-  this.options = options || {};
-  this.is('ExpandFiles');
+  config.files = res;
+  return config;
+}
 
-  utils.define(this, 'statCache', {});
-  utils.define(this, 'pathCache', {});
-  utils.define(this, 'cache', {});
+function RawNode(raw, config) {
+  run(config, 'rawNode', raw);
+  this.files = [];
+  var paths = {};
+
+  raw.options = resolvePaths(raw.options);
+  var opts = utils.extend({}, raw.options);
+  var filter = filterFiles(opts);
+
+  var srcFiles = opts.glob !== false
+    ? utils.glob.sync(raw.src, opts)
+    : raw.src;
+
+  srcFiles = srcFiles.filter(filter);
+
+  if (config.options.mapDest) {
+    var len = srcFiles.length, i = -1;
+    while (++i < len) {
+      var node = new Node(srcFiles[i], raw, config);
+      var dest = node.dest;
+      if (!node.src && !node.path) continue;
+      var src = resolveArray(node.src, opts);
+
+      if (paths[dest]) {
+        paths[dest].src = paths[dest].src.concat(src);
+      } else {
+        node.src = arrayify(src);
+        this.files.push(node);
+        paths[dest] = node;
+      }
+    }
+
+    if (!this.files.length) {
+      node = raw;
+      raw.src = [];
+      this.files.push(raw);
+    }
+
+  } else {
+    createNode(srcFiles, raw, this.files, config);
+  }
+}
+
+function createNode(src, raw, files, config) {
+  var node = new Node(src, raw, config);
+  if (node.path || node.src) {
+    files.push(node);
+  }
+}
+
+function Node(src, raw, config) {
+  this.options = utils.omit(raw.options, ['mapDest', 'flatten', 'rename', 'filter']);
+  this.src = arrayify(src);
+  if (raw.options.mapDest) {
+    this.dest = mapDest(raw.dest, src, raw);
+  } else {
+    this.dest = rewriteDest(raw.dest, src, raw.options);
+  }
+  run(config, 'node', this);
+}
+
+function mapDest(dest, src, node) {
+  var opts = node.options;
+
+  if (opts.rename === false) {
+    return dest;
+  }
+
+  var fp = src;
+  if (fp && typeof fp === 'string') {
+    fp = !utils.isGlob(fp) ? fp : '';
+    var cwd = path.resolve(opts.cwd);
+    fp = path.join(cwd, fp);
+    fp = utils.relative(cwd, fp);
+  } else {
+    fp = '';
+  }
+
+  if (opts.flatten === true) {
+    fp = path.basename(fp);
+  }
+
+  if (opts.base === true) {
+    opts.base = utils.base(node.orig.src);
+  }
+
+  if (opts.base) {
+    dest = path.join(dest, opts.base, path.basename(fp));
+  } else {
+    dest = path.join(dest, fp);
+  }
+  return rewriteDest(dest, src, opts);
 }
 
 /**
- * Inherit Files
+ * Used when `mapDest` is not true
  */
 
-Base.extend(Files);
+function rewriteDest(dest, src, opts) {
+  dest = utils.resolve(dest);
 
-/**
- * Normalize the given `config` with [normalize-config][]. See that
- * library for the full range of features and options, or to create
- * issues related to normalization.
- *
- * @param {Object} `config`
- * @param {String} `dest`
- * @param {Object} `options`
- * @return {Object} Returns the instance.
- * @api public
- */
-
-Files.prototype.normalize = function(/*config, dest, options*/) {
-  this.cache = utils.normalize.apply(this, arguments);
-  utils.is(this.cache, 'Files');
-  // this.files = this.cache.files;
-  this.run(this.cache);
-  return this;
-};
-
-/**
- * Expand glob patterns in `src`.
- *
- * @param {Object} `config`
- * @return {Object}
- */
-
-Files.prototype.expand = function(config, options) {
-  config = config || {};
-
-  if (!config.isNormalized) {
-    this.normalize(config, this.options);
-  } else {
-    this.cache = config;
+  if (opts.destBase) {
+    dest = path.join(opts.destBase, dest);
   }
 
-  this.emit('expand', this.cache);
-
-  var options = utils.merge({}, this.options, this.cache.options, options);
-  var glob = utils.glob.sync;
-  var files = this.cache.files;
-  var len = files.length, i = -1;
-
-  if (typeof options.glob === 'function') {
-    glob = options.glob;
+  if (opts.extDot || opts.hasOwnProperty('ext')) {
+    dest = rewriteExt(dest, opts);
   }
 
-  while (++i < len) {
-    var file = files[i];
+  if (typeof opts.rename === 'function') {
+    return opts.rename(dest, src, opts);
+  }
+  return dest;
+}
 
-    var opts = utils.merge({}, options, file.options);
-    runStage.call(this, this.cache, file, 'rawNode', opts);
-    utils.is(file, 'node');
+function rewriteExt(dest, opts) {
+  var re = {first: /(\.[^\/]*)?$/, last: /(\.[^\/\.]*)?$/};
 
-    opts = utils.merge({}, options, file.options);
-    opts.cwd = utils.resolveCwd(opts);
-    opts.base = utils.base(file.src, opts);
-    if (opts.cwd === opts.srcBase) {
-      opts.srcBase = '';
-    }
-
-    file.options = opts;
-
-    if (opts.glob !== false) {
-      file.src = glob(file.src, opts);
-    }
-
-    if (!file.src.length) {
-      runStage.call(this, this.cache, file, 'node', opts);
-      continue;
-    }
-
-    // run custom filter function on src files, if defined
-    file.src = utils.filterSrc(file.src, this.filter(opts));
-    if (opts.expand === true) {
-      this.cache.files = this.expandMapping(file, opts);
-      break;
-    }
-
-    file.dest = utils.mapDest.rename(file.dest, file.src, opts);
-    if (opts && opts.cwd) {
-      file.src = utils.resolveSrc(file.src, opts);
-    }
-    runStage.call(this, this.cache, file, 'node', opts);
+  if (opts.ext === false) {
+    opts.ext = '';
   }
 
-  this.files = this.cache.files;
-  return this;
-};
-
-/**
- * Expand `src-dest` mappings.
- *
- * @param {Object} `config`
- * @param {Object} `options`
- * @return {Object}
- */
-
-Files.prototype.expandMapping = function(file, options) {
-  var opts = utils.merge({}, options, file.options);
-  var filter = this.filter(opts);
-  var rest = utils.omit(file, ['src', 'dest', 'files']);
-  var len = file.src.length, i = -1;
-  var files = [];
-
-  while (++i < len) {
-    var fp = file.src[i];
-    if (!filter(fp)) continue;
-
-    var resultFile = utils.mapDest(fp, file.dest, opts)[0];
-    resultFile = utils.merge({}, rest, resultFile);
-
-    utils.is(resultFile, 'node');
-    this.emit('node', resultFile);
-
-    var dest = utils.unixify(resultFile.dest);
-    var src = utils.unixify(resultFile.src);
-
-    if (this.pathCache[dest]) {
-      this.pathCache[dest].src.push(src);
-    } else {
-      resultFile.src = [src];
-      files.push(resultFile);
-      this.pathCache[dest] = this.pathCache[dest] || resultFile;
-    }
-
-    this.run(this.pathCache[dest]);
+  if (opts.ext.charAt(0) !== '.') {
+    opts.ext = '.' + opts.ext;
   }
-  return files;
-};
+
+  if (typeof opts.extDot === 'undefined') {
+    opts.extDot = 'first';
+  }
+
+  dest = dest.replace(re[opts.extDot], opts.ext);
+  if (dest.slice(-1) === '.') {
+    dest = dest.slice(0, -1);
+  }
+  return dest;
+}
+
+function resolvePaths(opts) {
+  if (opts.destBase) {
+    opts.destBase = utils.resolve(opts.destBase);
+  }
+  if (opts.cwd) {
+    opts.cwd = utils.resolve(opts.cwd);
+  }
+  return opts;
+}
 
 /**
  * Default filter function.
@@ -177,73 +208,37 @@ Files.prototype.expandMapping = function(file, options) {
  * @return {Boolean} Returns `true` if a file matches.
  */
 
-Files.prototype.filter = function(opts) {
-  var filter = opts.filter;
-  var statType = opts.statType || 'lstatSync';
-  var self = this;
-
-  return function(fp) {
-    var isMatch = true;
-
-    // if `options.filter` is a function, use it to
-    // conditionally exclude a file from the result set
-    if (typeof filter === 'function') {
-      isMatch = filter(fp);
-
-    // if `options.filter` is a string and matches a `fs.lstat`
-    // method, call the `fs.lstat` method on the file
-    } else if (typeof filter === 'string') {
-      validateMethod(filter, statType);
-
-      try {
-        var stat = self.statCache[fp] || (self.statCache[fp] = fs[statType](fp));
-        isMatch = stat[filter]();
-      } catch (err) {
-        isMatch = false;
-      }
-    } else {
-      isMatch = true;
-    }
-    return isMatch;
-  };
-};
-
-/**
- * When the `filter` option is a string, validate
- * that the it's a valid `fs.lstat` method name.
- *
- * @param {String} `method`
- * @return {Boolean}
- */
-
-function validateMethod(method, type) {
-  var methods = ['isFile', 'isDirectory', 'isSymbolicLink'];
-  if (methods.indexOf(method) < 0) {
-    var msg = '[options.filter] `' + method
-      + '` is not a valid fs.' + type + ' method name';
-    throw new Error(msg);
+function filterFiles(opts) {
+  if (typeof opts.filter === 'function') {
+    return opts.filter;
   }
+  return function(fp) {
+    return true;
+  };
 }
 
-function runStage(app, config, name, opts) {
-  utils.is(config, name);
-  this.emit(name, config);
-  this.run(config, opts);
-  delete config['is' + config._name];
+function resolveArray(files, opts) {
+  if (!opts.mapDest) return files;
+
+  return files.map(function(fp) {
+    return path.join(opts.cwd, fp);
+  });
+}
+
+function arrayify(val) {
+  return Array.isArray(val) ? val : [val];
+}
+
+function run(parent, key, child) {
+  utils.define(child, 'parent', parent);
+  utils.define(child, 'orig', utils.extend({}, child));
+  child[key] = true;
+  parent.run(child);
+  delete child[key];
 }
 
 /**
- * Expose an instance of expand-files
+ * Expose expand
  */
 
-module.exports = function(obj, options) {
-  var config = new Files(options);
-  config.expand(obj);
-  return config.files;
-};
-
-/**
- * Expose `Files`.
- */
-
-module.exports.Files = Files;
+module.exports = ExpandFiles;
