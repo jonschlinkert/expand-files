@@ -23,6 +23,10 @@ require('matched', 'glob');
 require('has-glob');
 require = fn;
 
+/**
+ * Resolve the `base` path for a filepath.
+ */
+
 utils.base = function(src, options) {
   var opts = utils.extend({}, options);
   if (opts.base) {

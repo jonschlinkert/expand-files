@@ -3,7 +3,7 @@
 require('mocha');
 require('should');
 var assert = require('assert');
-var utils = require('../lib/utils');
+var utils = require('../utils');
 
 describe('utils', function() {
   describe('base', function() {
