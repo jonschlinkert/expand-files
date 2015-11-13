@@ -57,7 +57,9 @@ ExpandFiles.prototype.expand = function(src, dest, options) {
   util.run(this, 'expanded', config);
 
   for (var key in config) {
-    this[key] = config[key];
+    if (config.hasOwnProperty(key)) {
+      this[key] = config[key];
+    }
   }
   return this;
 };
@@ -202,15 +204,12 @@ function mapDest(dest, src, node) {
 
 function rewriteDest(dest, src, opts) {
   dest = utils.resolve(dest);
-
   if (opts.destBase) {
     dest = path.join(opts.destBase, dest);
   }
-
   if (opts.extDot || opts.hasOwnProperty('ext')) {
     dest = rewriteExt(dest, opts);
   }
-
   if (typeof opts.rename === 'function') {
     return opts.rename(dest, src, opts);
   }
