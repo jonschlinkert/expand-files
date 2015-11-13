@@ -6,7 +6,6 @@ var assert = require('assert');
 require('assert-path')(assert);
 var expand = require('expand');
 var extend = require('extend-shallow');
-var utils = require('../lib/utils');
 var Files = require('..');
 var config;
 

@@ -1,24 +1,60 @@
 'use strict';
 
 var path = require('path');
-var utils = require('./lib/utils');
+var util = require('expand-utils');
+var utils = require('./utils');
 var use = require('use');
+
+/**
+ * Create an instance of `ExpandFiles` with `options`.
+ *
+ * ```js
+ * var config = new ExpandFiles({cwd: 'src'});
+ * ```
+ * @param {Object} `options`
+ * @api public
+ */
 
 function ExpandFiles(options) {
   if (!(this instanceof ExpandFiles)) {
     return new ExpandFiles(options);
   }
-  utils.define(this, 'ExpandFiles', true);
+
+  // add `isFiles` non-enumberable property
+  utils.define(this, 'isFiles', true);
+
+  // enable plugins
   use(this);
+
   this.options = options || {};
+  if (util.isFiles(options) || arguments.length > 1) {
+    this.options = {};
+    this.expand.apply(this, arguments);
+    return this;
+  }
 }
+
+/**
+ * Normalize and expand files definitions and src-dest mappings
+ * from a declarative configuration.
+ *
+ * ```js
+ * var config = new ExpandFiles({cwd: 'src'});
+ * config.expand({src: '*.hbs', dest: 'templates/'});
+ * ```
+ * @param {Object|String|Array} `src`
+ * @param {Object|String} `dest`
+ * @param {Object} `options`
+ * @return {Object}
+ * @api public
+ */
 
 ExpandFiles.prototype.expand = function(src, dest, options) {
   var config = utils.normalize.apply(this, arguments);
-  run(this, 'normalized', config);
+  util.run(this, 'normalized', config);
 
   config = expandMapping(config, options);
-  run(this, 'expanded', config);
+  util.run(this, 'expanded', config);
 
   for (var key in config) {
     this[key] = config[key];
@@ -27,7 +63,7 @@ ExpandFiles.prototype.expand = function(src, dest, options) {
 };
 
 /**
- * iterate over a files array and expand src-dest mappings
+ * Iterate over a files array and expand src-dest mappings
  *
  * ```js
  * { files: [ { src: [ '*.js' ], dest: 'dist/' } ] }
@@ -52,8 +88,18 @@ function expandMapping(config, options) {
   return config;
 }
 
+/**
+ * Create a `raw` node. A node represents a single element
+ * in a `files` array, and "raw" means that `src` glob patterns
+ * have not been expanded.
+ *
+ * @param {Object} `raw`
+ * @param {Object} `config`
+ * @return {Object}
+ */
+
 function RawNode(raw, config) {
-  run(config, 'rawNode', raw);
+  util.run(config, 'rawNode', raw);
   this.files = [];
   var paths = {};
 
@@ -96,12 +142,15 @@ function RawNode(raw, config) {
   }
 }
 
-function createNode(src, raw, files, config) {
-  var node = new Node(src, raw, config);
-  if (node.path || node.src) {
-    files.push(node);
-  }
-}
+/**
+ * Create a new `Node` with the given `src`, `raw` node and
+ * `config` object.
+ *
+ * @param {String|Array} `src` Glob patterns
+ * @param {Object} `raw` Node with un-expanded glob patterns.
+ * @param {Object} `config`
+ * @return {Object}
+ */
 
 function Node(src, raw, config) {
   this.options = utils.omit(raw.options, ['mapDest', 'flatten', 'rename', 'filter']);
@@ -111,7 +160,7 @@ function Node(src, raw, config) {
   } else {
     this.dest = rewriteDest(raw.dest, src, raw.options);
   }
-  run(config, 'node', this);
+  util.run(config, 'node', this);
 }
 
 function mapDest(dest, src, node) {
@@ -201,6 +250,20 @@ function resolvePaths(opts) {
 }
 
 /**
+ * Create a new `Node` and push it onto the `files` array if the
+ * returned node has a `path` or `src` property. In plugins, you
+ * may remove the `src` and/or `path` properties to prevent nodes
+ * from being pushed onto the array.
+ */
+
+function createNode(src, raw, files, config) {
+  var node = new Node(src, raw, config);
+  if (node.path || node.src) {
+    files.push(node);
+  }
+}
+
+/**
  * Default filter function.
  *
  * @param {String} `fp`
@@ -227,15 +290,6 @@ function resolveArray(files, opts) {
 
 function arrayify(val) {
   return Array.isArray(val) ? val : [val];
-}
-
-function run(parent, key, child) {
-  utils.define(child, '_name', key);
-  utils.define(child, 'parent', parent);
-  utils.define(child, 'orig', utils.extend({}, child));
-  child[key] = true;
-  parent.run(child);
-  delete child[key];
 }
 
 /**

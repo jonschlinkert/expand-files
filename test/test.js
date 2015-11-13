@@ -10,7 +10,11 @@ describe('expand files', function() {
     it('should create an instance', function() {
       var config = new Files();
       assert(config instanceof Files);
-      assert(config.ExpandFiles === true);
+    });
+
+    it('should expose the `isFiles` boolean on an instance', function() {
+      var config = new Files();
+      assert(config.isFiles === true);
     });
 
     it('should instantiate without `new`', function() {
