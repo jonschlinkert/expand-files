@@ -8,18 +8,35 @@ Expands `src` glob patterns and creates `dest` mappings:
 
 ```js
 var files = require('expand-files');
-// pass any "global" options
+
+// pass any "global" options to `files`
 config = files({cwd: 'test/fixtures'});
 
 // expand src-dest mappings 
 config.expand({
-  options: {expand: true},
   src: '*.txt',
   dest: 'dist/'
 });
+
+// expand files objects
+config.expand({
+  files: {
+    'dist/': '*.txt'
+  }
+});
+
+// expand files arrays
+config.expand({
+  files: [
+    {src: '*.txt', dest: 'dist/'}
+    //...
+  ]
+});
 ```
 
-**results in**
+**Results**
+
+Each of the above results in something like this:
 
 ```js
 [
@@ -39,7 +56,7 @@ See [examples](./examples.md) of possible configurations.
 - [dest behavior](#dest-behavior)
 - [Examples](#examples)
 - [options](#options)
-  * [expand](#expand)
+  * [mapDest](#mapdest)
   * [flatten](#flatten)
   * [ext](#ext)
   * [extDot](#extdot)
@@ -69,13 +86,46 @@ var files = require('expand-files');
 var config = files();
 
 // pass a list of arguments
-config.expand(src, dest, options);
+config.expand('src', 'dest', options);
 
-// or an object
+// or an object with `src`/`dest`
 config.expand({
   options: options,
-  src: src, 
-  dest: dest
+  src: ['src'], 
+  dest: 'dest'
+});
+
+// or an object with a `files` object
+config.expand({
+  options: options,
+  files: {
+    src: 'src',
+    dest: 'dest'
+  }
+});
+
+// or an object with `files` mappings
+config.expand({
+  options: options,
+  files: {
+    'foo/': '*.js',
+    'bar/': '*.js',
+    'baz/': '*.js'
+  }
+});
+
+// or an object with an array of `files` objects
+config.expand({
+  options: options,
+  files: [
+    {src: 'src', dest: 'dest'}
+  ]
+});
+
+// or an object with an array of glob patterns
+config.expand({
+  options: options,
+  files: ['*.js', '*.txt']
 });
 ```
 
@@ -89,7 +139,7 @@ By default, `src` is appended to the defined `dest`. If `flatten` is true, then 
 config.expand({src: 'index.js', dest: 'dist/'});
 //=> [ { src: [ 'index.js' ], dest: 'dist/' } ]
 
-config.expand({src: 'index.js', dest: 'dist/', expand: true});
+config.expand({src: 'index.js', dest: 'dist/', mapDest: true});
 //=> [{ src: [ 'index.js' ], dest: 'dist/index.js' } ]
 ```
 
@@ -99,7 +149,7 @@ Supports any of the formats supported by the [files-objects][] library as well a
 
 ## options
 
-### expand
+### mapDest
 
 Expand src-dest mappings. Creates a `dest` filepath for each `src` filepath.
 
@@ -110,7 +160,7 @@ Expand src-dest mappings. Creates a `dest` filepath for each `src` filepath.
 **Example:**
 
 ```js
-config.expand({src: 'test/fixtures/*.js', dest: 'dist/', expand: true});
+config.expand({src: 'test/fixtures/*.js', dest: 'dist/', mapDest: true});
 ```
 
 **results in**
@@ -134,7 +184,7 @@ Flatten destination paths. Joins the `src` basename to the defined `dest` path.
 **Example:**
 
 ```js
-config.expand({src: 'test/fixtures/*.js', dest: 'dist/', expand: true, flatten: true});
+config.expand({src: 'test/fixtures/*.js', dest: 'dist/', mapDest: true, flatten: true});
 ```
 
 **results in**
@@ -259,7 +309,7 @@ Either way they will be normalized onto the `options` object to ensure that [glo
 * `base`
 * `cwd`
 * `destBase`
-* `expand`
+* `mapDest`
 * `ext`
 * `extDot`
 * `extend`
@@ -270,11 +320,24 @@ Either way they will be normalized onto the `options` object to ensure that [glo
 
 **example**
 
-Both of the following will result in `expand` being on the `options` object.
+Both of the following will result in `mapDest` being on the `options` object.
 
 ```js
-config.expand({src: '*.js', dest: 'dist/', options: {expand: true}});
-config.expand({src: '*.js', dest: 'dist/', expand: true});
+config.expand({src: '*.js', dest: 'dist/', options: {mapDest: true}});
+config.expand({src: '*.js', dest: 'dist/', mapDest: true});
+```
+
+Both result in something like:
+
+```js
+{
+  options: { mapDest: true },
+  files:
+   [ { options: {}, src: [...], dest: 'dist/examples.js' },
+     { options: {}, src: [...], dest: 'dist/gulpfile.js' },
+     { options: {}, src: [...], dest: 'dist/index.js' },
+     { options: {}, src: [...], dest: 'dist/utils.js' } ] 
+}
 ```
 
 ## Related projects
@@ -284,6 +347,7 @@ config.expand({src: '*.js', dest: 'dist/', expand: true});
 * [expand-files](https://www.npmjs.com/package/expand-files): Expand glob patterns in a declarative configuration into src-dest mappings. | [homepage](https://github.com/jonschlinkert/expand-files)
 * [expand-target](https://www.npmjs.com/package/expand-target): Expand target definitions in a declarative configuration. | [homepage](https://github.com/jonschlinkert/expand-target)
 * [expand-task](https://www.npmjs.com/package/expand-task): Expand and normalize task definitions in a declarative configuration. | [homepage](https://github.com/jonschlinkert/expand-task)
+* [expand-utils](https://www.npmjs.com/package/expand-utils): Utils shared by the expand libs. | [homepage](https://github.com/jonschlinkert/expand-utils)
 * [map-dest](https://www.npmjs.com/package/map-dest): Map the destination path for a file based on the given source path and options. | [homepage](https://github.com/jonschlinkert/map-dest)
 * [normalize-config](https://www.npmjs.com/package/normalize-config): Normalize a declarative configuration with any combination of src-dest mappings, files arrays, files objects and… [more](https://www.npmjs.com/package/normalize-config) | [homepage](https://github.com/jonschlinkert/normalize-config)
 
@@ -322,4 +386,4 @@ Released under the MIT license.
 
 ***
 
-_This file was generated by [verb-cli](https://github.com/assemble/verb-cli) on November 12, 2015._
+_This file was generated by [verb-cli](https://github.com/assemble/verb-cli) on November 13, 2015._
