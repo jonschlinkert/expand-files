@@ -22,4 +22,15 @@ describe('expand files', function() {
       assert(config instanceof Files);
     });
   });
+
+  describe('expand', function() {
+    it('should expand a config object passed to constructor', function() {
+      var config = new Files({
+        src: '*.js',
+        dest: 'foo/'
+      });
+      assert(config.files.length === 1);
+      assert(config.files[0].src.length > 1);
+    });
+  });
 });

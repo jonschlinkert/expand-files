@@ -105,11 +105,11 @@ function RawNode(raw, config) {
   this.files = [];
   var paths = {};
 
-  raw.options = resolvePaths(raw.options);
-  var opts = utils.extend({}, raw.options);
+  raw.options = utils.extend({}, config.options, raw.options);
+  var opts = resolvePaths(raw.options);
   var filter = filterFiles(opts);
 
-  var srcFiles = raw.src;
+  var srcFiles = utils.arrayify(raw.src);
   if (opts.glob !== false && utils.hasGlob(raw.src)) {
     srcFiles = utils.glob.sync(raw.src, opts);
   }
@@ -123,11 +123,10 @@ function RawNode(raw, config) {
       var dest = node.dest;
       if (!node.src && !node.path) continue;
       var src = resolveArray(node.src, opts);
-
       if (paths[dest]) {
         paths[dest].src = paths[dest].src.concat(src);
       } else {
-        node.src = arrayify(src);
+        node.src = utils.arrayify(src);
         this.files.push(node);
         paths[dest] = node;
       }
@@ -156,7 +155,7 @@ function RawNode(raw, config) {
 
 function Node(src, raw, config) {
   this.options = utils.omit(raw.options, ['mapDest', 'flatten', 'rename', 'filter']);
-  this.src = arrayify(src);
+  this.src = utils.arrayify(src);
   if (raw.options.mapDest) {
     this.dest = mapDest(raw.dest, src, raw);
   } else {
@@ -285,10 +284,6 @@ function resolveArray(files, opts) {
   return files.map(function(fp) {
     return path.join(opts.cwd || '', fp);
   });
-}
-
-function arrayify(val) {
-  return Array.isArray(val) ? val : [val];
 }
 
 /**

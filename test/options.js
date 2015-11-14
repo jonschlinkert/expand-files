@@ -488,7 +488,41 @@ describe('options', function() {
         cwd: '~/',
         src: '*.*'
       });
+      assertFiles(config);
+      assertFiles(config, 1);
+      assert(config.files[0].options.cwd === home + '/');
+    });
 
+    it('should expand a leading tilde in the cwd and use mapDest', function() {
+      var home = process.env[process.platform === 'win32' ? 'USERPROFILE' : 'HOME'];
+      config.expand({
+        mapDest: true,
+        cwd: '~/',
+        src: '*.*'
+      });
+      assertFiles(config);
+      assertFiles(config, 1);
+      assert(config.files[0].options.cwd === home + '/');
+    });
+
+    it('should expand a leading tilde in the global options cwd', function() {
+      var home = process.env[process.platform === 'win32' ? 'USERPROFILE' : 'HOME'];
+      var config = new Files({cwd: '~/'});
+      config.expand({
+        src: '*.*'
+      });
+      assertFiles(config);
+      assertFiles(config, 1);
+      assert(config.files[0].options.cwd === home + '/');
+    });
+
+    it('should use mapDest with leading tilde defined on global cwd', function() {
+      var home = process.env[process.platform === 'win32' ? 'USERPROFILE' : 'HOME'];
+      var config = new Files({cwd: '~/'});
+      config.expand({
+        mapDest: true,
+        src: '*.*'
+      });
       assertFiles(config);
       assertFiles(config, 1);
       assert(config.files[0].options.cwd === home + '/');

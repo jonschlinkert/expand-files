@@ -40,6 +40,10 @@ utils.base = function(src, options) {
   return base;
 };
 
+utils.arrayify = function(val) {
+  return Array.isArray(val) ? val : [val];
+};
+
 /**
  * Expose `utils`
  */
