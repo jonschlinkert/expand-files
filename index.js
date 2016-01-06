@@ -80,7 +80,7 @@ function expandMapping(config, options) {
   var res = [];
 
   while (++i < len) {
-    var node = new RawNode(config.files[i], config);
+    var node = new ConfigNode(config.files[i], config);
     if (!node.files.length) {
       continue;
     }
@@ -100,7 +100,7 @@ function expandMapping(config, options) {
  * @return {Object}
  */
 
-function RawNode(raw, config) {
+function ConfigNode(raw, config) {
   util.run(config, 'rawNode', raw);
   this.files = [];
   var paths = {};
@@ -119,9 +119,13 @@ function RawNode(raw, config) {
   if (config.options.mapDest) {
     var len = srcFiles.length, i = -1;
     while (++i < len) {
-      var node = new Node(srcFiles[i], raw, config);
+      var node = new FilesNode(srcFiles[i], raw, config);
       var dest = node.dest;
-      if (!node.src && !node.path) continue;
+
+      if (!node.src && !node.path) {
+        continue;
+      }
+
       var src = resolveArray(node.src, opts);
       if (paths[dest]) {
         paths[dest].src = paths[dest].src.concat(src);
@@ -148,20 +152,40 @@ function RawNode(raw, config) {
  * `config` object.
  *
  * @param {String|Array} `src` Glob patterns
- * @param {Object} `raw` Node with un-expanded glob patterns.
+ * @param {Object} `raw` FilesNode with un-expanded glob patterns.
  * @param {Object} `config`
  * @return {Object}
  */
 
-function Node(src, raw, config) {
+function FilesNode(src, raw, config) {
   this.options = utils.omit(raw.options, ['mapDest', 'flatten', 'rename', 'filter']);
   this.src = utils.arrayify(src);
   if (raw.options.mapDest) {
     this.dest = mapDest(raw.dest, src, raw);
+    // copy properties to the new node
+    for (var key in raw) {
+      if (key !== 'src' && key !== 'dest' && key !== 'options') {
+        this[key] = raw[key];
+      }
+    }
   } else {
     this.dest = rewriteDest(raw.dest, src, raw.options);
   }
   util.run(config, 'node', this);
+}
+
+/**
+ * Create a new `Node` and push it onto the `files` array if the
+ * returned node has a `path` or `src` property. In plugins, you
+ * may remove the `src` and/or `path` properties to prevent nodes
+ * from being pushed onto the array.
+ */
+
+function createNode(src, raw, files, config) {
+  var node = new FilesNode(src, raw, config);
+  if (node.path || node.src) {
+    files.push(node);
+  }
 }
 
 function mapDest(dest, src, node) {
@@ -245,20 +269,6 @@ function resolvePaths(opts) {
     opts.cwd = utils.resolve(opts.cwd);
   }
   return opts;
-}
-
-/**
- * Create a new `Node` and push it onto the `files` array if the
- * returned node has a `path` or `src` property. In plugins, you
- * may remove the `src` and/or `path` properties to prevent nodes
- * from being pushed onto the array.
- */
-
-function createNode(src, raw, files, config) {
-  var node = new Node(src, raw, config);
-  if (node.path || node.src) {
-    files.push(node);
-  }
 }
 
 /**
