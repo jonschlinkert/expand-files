@@ -16,10 +16,14 @@ describe('files objects', function() {
     config.expand({
       a: 'b',
       c: 'd',
+      data: {title: 'Blog'},
       options: { cwd: 'test' },
       src: 'fixtures/*.txt',
       dest: 'dist/'
     });
+    assert(config.data);
+    assert(config.data.title);
+    assert(config.data.title === 'Blog');
     assert.equal(config.a, 'b');
     assert.equal(config.c, 'd');
   });
