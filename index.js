@@ -81,10 +81,9 @@ function expandMapping(config, options) {
 
   while (++i < len) {
     var node = new RawNode(config.files[i], config);
-    if (!node.files.length) {
-      continue;
+    if (node.files.length) {
+      res.push.apply(res, node.files);
     }
-    res.push.apply(res, node.files);
   }
   config.files = res;
   return config;
@@ -160,17 +159,20 @@ function RawNode(raw, config) {
 function FilesNode(src, raw, config) {
   this.options = utils.omit(raw.options, ['mapDest', 'flatten', 'rename', 'filter']);
   this.src = utils.arrayify(src);
+
   if (raw.options.mapDest) {
     this.dest = mapDest(raw.dest, src, raw);
-    // copy properties to the new node
-    for (var key in raw) {
-      if (key !== 'src' && key !== 'dest' && key !== 'options') {
-        this[key] = raw[key];
-      }
-    }
   } else {
     this.dest = rewriteDest(raw.dest, src, raw.options);
   }
+
+  // copy properties to the new node
+  for (var key in raw) {
+    if (key !== 'src' && key !== 'dest' && key !== 'options') {
+      this[key] = raw[key];
+    }
+  }
+
   util.run(config, 'filesNode', this);
 }
 

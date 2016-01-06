@@ -33,7 +33,20 @@ describe('files arrays', function() {
         {src: 'fixtures/*.txt', dest: 'bar/'}
       ]
     });
+    assert(config.files.length === 2);
+  });
 
+  it('should return arbitrary properties on nodes in files arrays', function() {
+    config.expand({
+      options: { cwd: 'test' },
+      files: [
+        {src: 'fixtures/*.txt', dest: 'foo/'},
+        {src: 'fixtures/*.txt', dest: 'bar/', data: {title: 'My Blog'}}
+      ]
+    });
+
+    assert(config.files[1].data);
+    assert(config.files[1].data.title === 'My Blog');
     assert(config.files.length === 2);
   });
 
