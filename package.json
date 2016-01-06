@@ -22,13 +22,13 @@
   },
   "dependencies": {
     "define-property": "^0.2.5",
-    "expand-utils": "^0.1.0",
+    "expand-utils": "^0.1.3",
     "extend-shallow": "^2.0.1",
     "glob-parent": "^2.0.0",
     "has-glob": "^0.1.1",
-    "lazy-cache": "^0.2.4",
-    "matched": "^0.3.2",
-    "normalize-config": "^0.4.7",
+    "lazy-cache": "^1.0.3",
+    "matched": "^0.4.1",
+    "normalize-config": "^0.4.8",
     "object.omit": "^2.0.0",
     "relative": "^3.0.2",
     "resolve-dir": "^0.1.0",
@@ -36,17 +36,17 @@
   },
   "devDependencies": {
     "assert-path": "^0.1.0",
-    "expand": "^0.3.2",
+    "expand": "^0.4.0",
     "for-in": "^0.1.4",
     "global-modules": "^0.2.0",
     "gulp": "^3.9.0",
-    "gulp-eslint": "^1.1.0",
-    "gulp-istanbul": "^0.10.2",
-    "gulp-mocha": "^2.1.3",
+    "gulp-eslint": "^1.1.1",
+    "gulp-istanbul": "^0.10.3",
+    "gulp-mocha": "^2.2.0",
     "mixin-deep": "^1.1.3",
-    "mocha": "^2.3.3",
+    "mocha": "*",
     "placeholders": "^0.2.0",
-    "should": "^7.1.1",
+    "should": "*",
     "stringify-object": "github:jonschlinkert/stringify-object",
     "to-clipboard": "^0.2.0",
     "vinyl": "^1.1.0"
@@ -69,17 +69,17 @@
   ],
   "verb": {
     "related": {
-      "description": "",
       "list": [
-        "normalize-config",
         "expand",
         "expand-config",
         "expand-files",
-        "expand-task",
         "expand-target",
+        "expand-task",
         "expand-utils",
-        "map-dest"
-      ]
+        "map-dest",
+        "normalize-config"
+      ],
+      "description": ""
     }
   }
 }
