@@ -42,7 +42,7 @@ describe('plugins', function() {
     var File = require('vinyl');
     config.use(function() {
       return function fn(val) {
-        if (!val.node) return fn;
+        if (!val.filesNode) return fn;
         val.parent.array = val.parent.array || [];
         val.path = val.src[0];
         var file = new File(val);
@@ -64,7 +64,7 @@ describe('plugins', function() {
     var File = require('vinyl');
     config.use(function() {
       return function fn(val) {
-        if (!val.node) return fn;
+        if (!val.filesNode) return fn;
         if (/options\.js$/.test(val.src[0])) {
           delete val.src;
         }

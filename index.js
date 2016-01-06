@@ -80,7 +80,7 @@ function expandMapping(config, options) {
   var res = [];
 
   while (++i < len) {
-    var node = new ConfigNode(config.files[i], config);
+    var node = new RawNode(config.files[i], config);
     if (!node.files.length) {
       continue;
     }
@@ -100,7 +100,7 @@ function expandMapping(config, options) {
  * @return {Object}
  */
 
-function ConfigNode(raw, config) {
+function RawNode(raw, config) {
   util.run(config, 'rawNode', raw);
   this.files = [];
   var paths = {};
@@ -171,7 +171,7 @@ function FilesNode(src, raw, config) {
   } else {
     this.dest = rewriteDest(raw.dest, src, raw.options);
   }
-  util.run(config, 'node', this);
+  util.run(config, 'filesNode', this);
 }
 
 /**
