@@ -420,14 +420,14 @@ Lines        : 100% (104/104)
 
 You might also be interested in these projects:
 
-* [expand-config](https://www.npmjs.com/package/expand-config): Expand tasks, targets and files in a declarative configuration. | [homepage](https://github.com/jonschlinkert/expand-config)
-* [expand-files](https://www.npmjs.com/package/expand-files): Expand glob patterns in a declarative configuration into src-dest mappings. | [homepage](https://github.com/jonschlinkert/expand-files)
-* [expand-target](https://www.npmjs.com/package/expand-target): Expand target definitions in a declarative configuration. | [homepage](https://github.com/jonschlinkert/expand-target)
-* [expand-task](https://www.npmjs.com/package/expand-task): Expand and normalize task definitions in a declarative configuration. | [homepage](https://github.com/jonschlinkert/expand-task)
-* [expand-utils](https://www.npmjs.com/package/expand-utils): Utils shared by the expand libs. | [homepage](https://github.com/jonschlinkert/expand-utils)
-* [expand](https://www.npmjs.com/package/expand): Recursively resolve templates in an object, string or array. | [homepage](https://github.com/jonschlinkert/expand)
-* [map-dest](https://www.npmjs.com/package/map-dest): Map the destination path for a file based on the given source path and options. | [homepage](https://github.com/jonschlinkert/map-dest)
-* [normalize-config](https://www.npmjs.com/package/normalize-config): Normalize a declarative configuration with any combination of src-dest mappings, files arrays, files objects and… [more](https://www.npmjs.com/package/normalize-config) | [homepage](https://github.com/jonschlinkert/normalize-config)
+* [map-dest](https://www.npmjs.com/package/map-dest): Map the destination path for a file based on the given source path and options. | [homepage](https://github.com/jonschlinkert/map-dest "Map the destination path for a file based on the given source path and options.")
+* [expand](https://www.npmjs.com/package/expand): Recursively resolve templates in an object, string or array. | [homepage](https://github.com/jonschlinkert/expand "Recursively resolve templates in an object, string or array.")
+* [expand-config](https://www.npmjs.com/package/expand-config): Expand tasks, targets and files in a declarative configuration. | [homepage](https://github.com/jonschlinkert/expand-config "Expand tasks, targets and files in a declarative configuration.")
+* [expand-files](https://www.npmjs.com/package/expand-files): Expand glob patterns in a declarative configuration into src-dest mappings. | [homepage](https://github.com/jonschlinkert/expand-files "Expand glob patterns in a declarative configuration into src-dest mappings.")
+* [expand-target](https://www.npmjs.com/package/expand-target): Expand target definitions in a declarative configuration. | [homepage](https://github.com/jonschlinkert/expand-target "Expand target definitions in a declarative configuration.")
+* [expand-task](https://www.npmjs.com/package/expand-task): Expand and normalize task definitions in a declarative configuration. | [homepage](https://github.com/jonschlinkert/expand-task "Expand and normalize task definitions in a declarative configuration.")
+* [expand-utils](https://www.npmjs.com/package/expand-utils): Utils shared by the expand libs. | [homepage](https://github.com/jonschlinkert/expand-utils "Utils shared by the expand libs.")
+* [normalize-config](https://www.npmjs.com/package/normalize-config): Normalize a declarative configuration with any combination of src-dest mappings, files arrays, files objects and… [more](https://github.com/jonschlinkert/normalize-config) | [homepage](https://github.com/jonschlinkert/normalize-config "Normalize a declarative configuration with any combination of src-dest mappings, files arrays, files objects and options into a consistent format so the config can easily be passed to any build system.")
 
 ## Contributing
 
