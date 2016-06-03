@@ -1,7 +1,7 @@
 {
   "name": "expand-files",
   "description": "Expand glob patterns in a declarative configuration into src-dest mappings.",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "homepage": "https://github.com/jonschlinkert/expand-files",
   "author": "Jon Schlinkert (https://github.com/jonschlinkert)",
   "repository": "jonschlinkert/expand-files",
@@ -24,7 +24,7 @@
     "base": "^0.8.1",
     "base-plugins": "^0.4.13",
     "define-property": "^0.2.5",
-    "expand-utils": "^0.1.5",
+    "expand-utils": "^0.2.0",
     "extend-shallow": "^2.0.1",
     "glob-parent": "^2.0.0",
     "has-glob": "^0.1.1",
