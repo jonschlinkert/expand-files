@@ -56,9 +56,11 @@ Base.extend(ExpandFiles);
 ExpandFiles.prototype.expand = function(src, dest, options) {
   var files = utils.normalize.apply(this, arguments);
   util.run(this, 'normalized', files);
+  this.emit('files', 'normalized', files);
 
   files = expandMapping.call(this, files, options);
   util.run(this, 'expanded', files);
+  this.emit('files', 'expanded', files);
 
   for (var key in files) {
     if (files.hasOwnProperty(key)) {
@@ -85,7 +87,9 @@ function expandMapping(config, options) {
 
   while (++i < len) {
     var raw = config.files[i];
-    var node = new RawNode(raw, config);
+    var node = new RawNode(raw, config, this);
+    this.emit('files', 'rawNode', node);
+    this.emit('rawNode', node);
     if (node.files.length) {
       res.push.apply(res, node.files);
     }
@@ -104,7 +108,7 @@ function expandMapping(config, options) {
  * @return {Object}
  */
 
-function RawNode(raw, config) {
+function RawNode(raw, config, app) {
   utils.define(this, 'isRawNode', true);
   util.run(config, 'rawNode', raw);
   this.files = [];
@@ -125,6 +129,8 @@ function RawNode(raw, config) {
     var len = srcFiles.length, i = -1;
     while (++i < len) {
       var node = new FilesNode(srcFiles[i], raw, config);
+      app.emit('files', 'filesNode', node);
+      app.emit('filesNode', node);
       var dest = node.dest;
 
       if (!node.src && !node.path) {
