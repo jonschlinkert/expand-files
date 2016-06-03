@@ -34,7 +34,6 @@ function arrayify(val) {
   return Array.isArray(val) ? val : [val];
 }
 
-
 var config = new Files();
 function addFoo(config) {
   return function fn(node) {
