@@ -12,15 +12,16 @@ var fn = require;
  */
 
 require = utils;
-require('normalize-config', 'normalize');
+require('base-plugins', 'plugins');
 require('define-property', 'define');
 require('extend-shallow', 'extend');
-require('resolve-dir', 'resolve');
 require('glob-parent', 'parent');
-require('relative', 'relative');
-require('object.omit', 'omit');
-require('matched', 'glob');
 require('has-glob');
+require('matched', 'glob');
+require('normalize-config', 'normalize');
+require('object.omit', 'omit');
+require('relative', 'relative');
+require('resolve-dir', 'resolve');
 require = fn;
 
 /**

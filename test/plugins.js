@@ -19,7 +19,7 @@ describe('plugins', function() {
       var render = expand(this.options);
 
       return function fn(node) {
-        if (!node.rawNode) return fn;
+        if (!node.isRawNode) return fn;
         var ctx = extend({}, files, this.options, this.parent);
         render(node, ctx);
       };
@@ -35,14 +35,14 @@ describe('plugins', function() {
     });
 
     assert(config.files[0].src.length > 0);
-    assert(config.files[0].options.cwd === 'test/fixtures');
+    assert.equal(config.files[0].options.cwd, 'test/fixtures');
   });
 
   it('should update files mappings with a plugin', function() {
     var File = require('vinyl');
     config.use(function() {
       return function fn(val) {
-        if (!val.filesNode) return fn;
+        if (!val.isFilesNode) return fn;
         val.parent.array = val.parent.array || [];
         val.path = val.src[0];
         var file = new File(val);
@@ -64,7 +64,7 @@ describe('plugins', function() {
     var File = require('vinyl');
     config.use(function() {
       return function fn(val) {
-        if (!val.filesNode) return fn;
+        if (!val.isFilesNode) return fn;
         if (/options\.js$/.test(val.src[0])) {
           delete val.src;
         }
@@ -77,6 +77,6 @@ describe('plugins', function() {
       dest: 'foo'
     });
 
-    assert(config.files.length === 2);
+    assert.equal(config.files.length, 2);
   });
 });

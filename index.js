@@ -1,9 +1,9 @@
 'use strict';
 
 var path = require('path');
+var Base = require('base');
 var util = require('expand-utils');
 var utils = require('./utils');
-var use = require('use');
 
 /**
  * Create an instance of `ExpandFiles` with `options`.
@@ -20,11 +20,9 @@ function ExpandFiles(options) {
     return new ExpandFiles(options);
   }
 
-  // add `isFiles` non-enumberable property
-  utils.define(this, 'isFiles', true);
-
-  // enable plugins
-  use(this);
+  Base.call(this, {}, options);
+  this.use(utils.plugins());
+  this.is('Files');
 
   this.options = options || {};
   if (util.isFiles(options) || arguments.length > 1) {
@@ -33,6 +31,12 @@ function ExpandFiles(options) {
     return this;
   }
 }
+
+/**
+ * Inherit `Base`
+ */
+
+Base.extend(ExpandFiles);
 
 /**
  * Normalize and expand files definitions and src-dest mappings
@@ -50,15 +54,15 @@ function ExpandFiles(options) {
  */
 
 ExpandFiles.prototype.expand = function(src, dest, options) {
-  var config = utils.normalize.apply(this, arguments);
-  util.run(this, 'normalized', config);
+  var files = utils.normalize.apply(this, arguments);
+  util.run(this, 'normalized', files);
 
-  config = expandMapping(config, options);
-  util.run(this, 'expanded', config);
+  files = expandMapping.call(this, files, options);
+  util.run(this, 'expanded', files);
 
-  for (var key in config) {
-    if (config.hasOwnProperty(key)) {
-      this[key] = config[key];
+  for (var key in files) {
+    if (files.hasOwnProperty(key)) {
+      this[key] = files[key];
     }
   }
   return this;
@@ -80,7 +84,8 @@ function expandMapping(config, options) {
   var res = [];
 
   while (++i < len) {
-    var node = new RawNode(config.files[i], config);
+    var raw = config.files[i];
+    var node = new RawNode(raw, config);
     if (node.files.length) {
       res.push.apply(res, node.files);
     }
@@ -100,6 +105,7 @@ function expandMapping(config, options) {
  */
 
 function RawNode(raw, config) {
+  utils.define(this, 'isRawNode', true);
   util.run(config, 'rawNode', raw);
   this.files = [];
   var paths = {};
@@ -157,6 +163,7 @@ function RawNode(raw, config) {
  */
 
 function FilesNode(src, raw, config) {
+  utils.define(this, 'isFilesNode', true);
   this.options = utils.omit(raw.options, ['mapDest', 'flatten', 'rename', 'filter']);
   this.src = utils.arrayify(src);
 
@@ -172,7 +179,6 @@ function FilesNode(src, raw, config) {
       this[key] = raw[key];
     }
   }
-
   util.run(config, 'filesNode', this);
 }
 
@@ -197,9 +203,14 @@ function mapDest(dest, src, node) {
     return dest;
   }
 
+  var parent = '';
   var fp = src;
+
   if (fp && typeof fp === 'string') {
-    fp = !utils.hasGlob(fp) ? fp : '';
+    if (utils.hasGlob(fp)) {
+      parent = utils.base(fp);
+      fp = '';
+    }
     var cwd = path.resolve(opts.cwd || '');
     fp = path.join(cwd, fp);
     fp = utils.relative(cwd, fp);
@@ -212,7 +223,7 @@ function mapDest(dest, src, node) {
   }
 
   if (opts.base === true) {
-    opts.base = utils.base(node.orig.src);
+    opts.base = parent;
   }
 
   if (opts.base) {
