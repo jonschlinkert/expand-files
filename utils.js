@@ -42,7 +42,7 @@ utils.base = function(src, options) {
 };
 
 utils.arrayify = function(val) {
-  return Array.isArray(val) ? val : [val];
+  return val ? (Array.isArray(val) ? val : [val]) : [];
 };
 
 /**
