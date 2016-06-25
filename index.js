@@ -173,6 +173,13 @@ function FilesNode(src, raw, config) {
   this.options = utils.omit(raw.options, ['mapDest', 'flatten', 'rename', 'filter']);
   this.src = utils.arrayify(src);
 
+  if (this.options.resolve) {
+    var cwd = path.resolve(this.options.cwd || process.cwd());
+    this.src = this.src.map(function(fp) {
+      return path.resolve(cwd, fp);
+    });
+  }
+
   if (raw.options.mapDest) {
     this.dest = mapDest(raw.dest, src, raw);
   } else {
